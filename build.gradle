@@ -1,0 +1,75 @@
+plugins {
+    id 'net.fabricmc.fabric-loom-remap' version "${loom_version}"
+    id 'maven-publish'
+    id "org.jetbrains.kotlin.jvm" version "2.3.10"
+}
+
+version = project.mod_version
+group = project.maven_group
+
+repositories {
+    mavenLocal()
+    mavenCentral()
+    maven { url "https://maven.fabricmc.net/" }
+}
+
+loom {
+    splitEnvironmentSourceSets()
+
+    mods {
+        "ic2_120_advanced_solar_addon" {
+            sourceSet sourceSets.main
+            sourceSet sourceSets.client
+        }
+    }
+}
+
+dependencies {
+    minecraft "com.mojang:minecraft:${project.minecraft_version}"
+    mappings "net.fabricmc:yarn:${project.yarn_mappings}:v2"
+    modImplementation "net.fabricmc:fabric-loader:${project.loader_version}"
+    modImplementation "net.fabricmc.fabric-api:fabric-api:${project.fabric_api_version}"
+    modImplementation "net.fabricmc:fabric-language-kotlin:${project.fabric_kotlin_version}"
+
+    // fabric-registry-lib
+    modImplementation "stardust:fabric-registry-lib:0.1.0"
+    
+    // IC2-Fabric (compileOnly, runtime从mods文件夹加载)
+    // modCompileOnly files("../ic2-fabric/build/libs/ic2_120-1.0.0.jar")
+    
+    // mc-compose UI库
+    modImplementation "mc_compose:mc-compose:0.1.0"
+    
+    // TeamReborn Energy API
+    modImplementation "teamreborn:energy:${project.energy_api_version}"
+}
+
+processResources {
+    inputs.property "version", project.version
+
+    filesMatching("fabric.mod.json") {
+        expand "version": inputs.properties.version
+    }
+}
+
+tasks.withType(JavaCompile).configureEach {
+    it.options.release = 17
+}
+
+tasks.withType(org.jetbrains.kotlin.gradle.tasks.KotlinCompile).all {
+    kotlinOptions {
+        jvmTarget = 17
+    }
+}
+
+java {
+    withSourcesJar()
+    sourceCompatibility = JavaVersion.VERSION_17
+    targetCompatibility = JavaVersion.VERSION_17
+}
+
+jar {
+    from("LICENSE") {
+        rename { "${it}_${project.name}" }
+    }
+}
