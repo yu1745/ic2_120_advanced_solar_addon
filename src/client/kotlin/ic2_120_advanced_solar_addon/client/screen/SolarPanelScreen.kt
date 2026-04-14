@@ -49,8 +49,8 @@ class SolarPanelScreen(
 
         val stateText = when (state) {
             0 -> Text.translatable("gui.ic2_120_advanced_solar_addon.solar_state.none").string
-            1 -> Text.translatable("gui.ic2_120_advanced_solar_addon.solar_state.night", EnergyFormatUtils.formatEu(dayPower.toLong())).string
-            2 -> Text.translatable("gui.ic2_120_advanced_solar_addon.solar_state.day", EnergyFormatUtils.formatEu(nightPower.toLong())).string
+            1 -> Text.translatable("gui.ic2_120_advanced_solar_addon.solar_state.night", EnergyFormatUtils.formatEu(nightPower.toLong())).string
+            2 -> Text.translatable("gui.ic2_120_advanced_solar_addon.solar_state.day", EnergyFormatUtils.formatEu(dayPower.toLong())).string
             else -> Text.translatable("gui.ic2_120_advanced_solar_addon.solar_state.unknown").string
         }
 

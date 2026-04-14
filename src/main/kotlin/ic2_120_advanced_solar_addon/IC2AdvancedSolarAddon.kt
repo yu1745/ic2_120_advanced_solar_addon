@@ -1,6 +1,7 @@
 package ic2_120_advanced_solar_addon
 
 import ic2_120_advanced_solar_addon.config.Ic2AdvancedSolarAddonConfig
+import ic2_120_advanced_solar_addon.content.command.MolecularTransformerCommand
 import ic2_120_advanced_solar_addon.content.recipe.MTRecipes
 import ic2_120_advanced_solar_addon.content.RegistryConfigurerImpl
 import net.fabricmc.api.ModInitializer
@@ -33,6 +34,9 @@ object IC2AdvancedSolarAddon : ModInitializer {
 
         // 初始化分子重组仪配方（从配置加载）
         MTRecipes.init()
+
+        // 注册命令
+        MolecularTransformerCommand.register()
 
         LOGGER.info("IC2 Advanced Solar Addon initialized!")
     }

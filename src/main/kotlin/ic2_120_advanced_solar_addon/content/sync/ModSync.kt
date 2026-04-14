@@ -36,7 +36,7 @@ class SolarPanelSync(
     override fun getSideMaxInsert(side: Direction?): Long = 0L
 
     override fun getSideMaxExtract(side: Direction?): Long =
-        if (side != getFacing() && amount >= minOutput) maxExtract else 0L
+        if (amount >= minOutput) maxExtract else 0L
 
     override fun onEnergyCommitted() {
         energy = amount.toInt().coerceIn(0, Int.MAX_VALUE)
@@ -92,11 +92,12 @@ class QuantumGeneratorSync(
 
 class MolecularTransformerSync(
     schema: SyncSchema,
+    tier: Int,
     private val getFacing: () -> Direction,
     currentTickProvider: () -> Long?
 ) : TickLimitedSidedEnergyContainer(
     baseCapacity = 10000000L,
-    maxInsertPerTick = 2048L,
+    maxInsertPerTick = EnergyTier.euPerTickFromTier(tier),
     maxExtractPerTick = 0L,
     currentTickProvider = currentTickProvider
 ) {

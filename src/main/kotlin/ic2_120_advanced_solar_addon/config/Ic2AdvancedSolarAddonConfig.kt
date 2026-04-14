@@ -42,23 +42,23 @@ data class MolecularTransformerConfig(
 )
 
 private val defaultRecipes = listOf(
-    // 萤石 -> 阳光化合物，900 EU
+    // 萤石 -> 阳光化合物，900W EU
     MolecularTransformerRecipeConfig(
         input = "ic2_120_advanced_solar_addon:fluorite",
         output = "ic2_120_advanced_solar_addon:sunnarium",
-        energy = 900
+        energy = 900000000
     ),
-    // 萤石粉 -> 小块阳光化合物，100 EU
+    // 萤石粉 -> 小块阳光化合物，100W EU
     MolecularTransformerRecipeConfig(
         input = "ic2_120_advanced_solar_addon:fluorite_dust",
         output = "ic2_120_advanced_solar_addon:sunnarium_part",
-        energy = 100
+        energy = 100000000
     ),
-    // 铁锭 -> 铱锭，900 EU
+    // 铁锭 -> 铱锭，900W EU
     MolecularTransformerRecipeConfig(
         input = "minecraft:iron_ingot",
         output = "ic2_120_advanced_solar_addon:iridium_ingot",
-        energy = 900
+        energy = 900000000
     )
 )
 
@@ -95,6 +95,61 @@ object Ic2AdvancedSolarAddonConfig {
 
     fun getMolecularTransformerRecipes(): List<MolecularTransformerRecipeConfig> {
         return current.molecularTransformer.recipes
+    }
+
+    fun getRecipeByInput(inputId: String): MolecularTransformerRecipeConfig? {
+        val normalized = inputId.trim()
+        if (normalized.isEmpty()) return null
+        return current.molecularTransformer.recipes.find { it.input == normalized }
+    }
+
+    fun addOrUpdateRecipeEnergy(inputId: String, energy: Long): Boolean {
+        val normalizedId = inputId.trim()
+        if (normalizedId.isEmpty() || energy <= 0) return false
+
+        val currentRecipes = current.molecularTransformer.recipes.toMutableList()
+        val existingIndex = currentRecipes.indexOfFirst { it.input == normalizedId }
+
+        val newRecipe = MolecularTransformerRecipeConfig(
+            input = normalizedId,
+            output = existingIndex.takeIf { it >= 0 }?.let { current.molecularTransformer.recipes[it].output } ?: "",
+            energy = energy
+        )
+
+        if (existingIndex >= 0) {
+            currentRecipes[existingIndex] = newRecipe
+        } else {
+            currentRecipes.add(newRecipe)
+        }
+
+        current = current.copy(
+            molecularTransformer = current.molecularTransformer.copy(
+                recipes = currentRecipes
+            )
+        )
+
+        saveCurrentConfig()
+        return true
+    }
+
+    fun removeRecipe(inputId: String): Boolean {
+        val normalizedId = inputId.trim()
+        if (normalizedId.isEmpty()) return false
+
+        val currentRecipes = current.molecularTransformer.recipes.toMutableList()
+        val existingIndex = currentRecipes.indexOfFirst { it.input == normalizedId }
+
+        if (existingIndex < 0) return false
+
+        currentRecipes.removeAt(existingIndex)
+        current = current.copy(
+            molecularTransformer = current.molecularTransformer.copy(
+                recipes = currentRecipes
+            )
+        )
+
+        saveCurrentConfig()
+        return true
     }
 
     private fun saveCurrentConfig() {

@@ -1,6 +1,7 @@
 package ic2_120_advanced_solar_addon.content.screen
 
 import ic2_120_advanced_solar_addon.content.block.MolecularTransformerBlock
+import ic2_120_advanced_solar_addon.content.block.MolecularTransformerBlockEntity
 import ic2_120_advanced_solar_addon.content.sync.MolecularTransformerSync
 import net.minecraft.entity.player.PlayerEntity
 import net.minecraft.entity.player.PlayerInventory
@@ -28,6 +29,7 @@ class MolecularTransformerScreenHandler(
 
     val sync = MolecularTransformerSync(
         schema = SyncedDataView(propertyDelegate),
+        tier = MolecularTransformerBlockEntity.TIER,
         getFacing = { Direction.NORTH },
         currentTickProvider = { null }
     )

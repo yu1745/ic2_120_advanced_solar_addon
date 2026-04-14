@@ -89,6 +89,13 @@ abstract class SolarPanelBlockEntity(
         markDirty()
     }
 
+    companion object {
+        /** 6:20 AM ≈ 333 ticks（0 = 6:00 AM，20 分钟 ≈ 333 ticks） */
+        private const val DAY_START_TICK = 333
+        /** 17:45 PM = 11750 ticks（11*1000 + 750） */
+        private const val DAY_END_TICK = 11750
+    }
+
     private fun checkSky() {
         val world = this.world ?: return
         val pos = this.pos
@@ -99,13 +106,21 @@ abstract class SolarPanelBlockEntity(
             return
         }
 
-        val isDay = world.isDay
+        // 仅主世界
+        if (world.registryKey != World.OVERWORLD) {
+            generationState = GenerationState.NONE
+            return
+        }
+
+        val time = world.timeOfDay % 24000
         val isRaining = world.isRaining || world.isThundering
         val canRain = world.getBiome(pos).value().hasPrecipitation()
+        val isDaytime = time in DAY_START_TICK..DAY_END_TICK
 
         generationState = when {
-            isDay && (!canRain || !isRaining) -> GenerationState.DAY
-            !isDay -> GenerationState.NIGHT
+            isDaytime && (!canRain || !isRaining) -> GenerationState.DAY
+            isDaytime && canRain && isRaining -> GenerationState.NONE
+            !isDaytime -> GenerationState.NIGHT
             else -> GenerationState.NONE
         }
 

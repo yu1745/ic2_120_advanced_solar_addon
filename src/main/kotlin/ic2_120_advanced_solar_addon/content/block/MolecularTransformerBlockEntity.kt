@@ -3,6 +3,7 @@ package ic2_120_advanced_solar_addon.content.block
 import ic2_120_advanced_solar_addon.content.sync.MolecularTransformerSync
 import ic2_120_advanced_solar_addon.content.screen.MolecularTransformerScreenHandler
 import ic2_120_advanced_solar_addon.content.recipe.MTRecipes
+import ic2_120.content.energy.EnergyTier
 import ic2_120.content.block.ITieredMachine
 import ic2_120.content.block.machines.MachineBlockEntity
 import net.minecraft.block.BlockState
@@ -38,10 +39,10 @@ class MolecularTransformerBlockEntity(
 
     companion object {
         const val TIER = 10
-        // const val REQUIRED_ENERGY_PER_TICK = 4096*4096
     }
 
     override val tier: Int = TIER
+    private val maxConsumePerTick: Long = EnergyTier.euPerTickFromTier(tier)
     override val activeProperty = MolecularTransformerBlock.ACTIVE
 
     @Suppress("unused")
@@ -50,6 +51,7 @@ class MolecularTransformerBlockEntity(
     @RegisterEnergy
     val sync = MolecularTransformerSync(
         schema = syncedData,
+        tier = tier,
         getFacing = { world?.getBlockState(pos)?.get(Properties.HORIZONTAL_FACING) ?: Direction.NORTH },
         currentTickProvider = { world?.time }
     )
@@ -80,19 +82,31 @@ class MolecularTransformerBlockEntity(
         val inputStack = inventory[MolecularTransformerBlock.INPUT_SLOT]
         val outputStack = inventory[MolecularTransformerBlock.OUTPUT_SLOT]
 
-        val isActive = if (currentRecipe == null && !inputStack.isEmpty) {
+        if (currentRecipe == null && !inputStack.isEmpty) {
             val recipe = MTRecipes.findRecipe(inputStack)
             if (recipe != null && canOutput(recipe.output, outputStack)) {
                 currentRecipe = recipe
                 energyUsed = 0
             }
-            false
-        } else false
+        }
 
         val recipe = currentRecipe
         if (recipe != null) {
+            // Recipe may become invalid while processing (input changed/output blocked).
+            if (!canOutput(recipe.output, outputStack) ||
+                inputStack.isEmpty ||
+                !ItemStack.canCombine(recipe.input, inputStack) ||
+                inputStack.count < recipe.input.count
+            ) {
+                currentRecipe = null
+                energyUsed = 0
+                setActiveState(world, pos, state, false)
+                markDirty()
+                return
+            }
+
             val energyNeeded = recipe.energy - energyUsed
-            val energyToUse = minOf(sync.amount, energyNeeded)
+            val energyToUse = minOf(sync.amount, energyNeeded, maxConsumePerTick)
             sync.consumeEnergy(energyToUse)
             energyUsed += energyToUse
 
@@ -103,7 +117,7 @@ class MolecularTransformerBlockEntity(
                     inventory[MolecularTransformerBlock.OUTPUT_SLOT].increment(recipe.output.count)
                 }
 
-                inputStack.decrement(1)
+                inputStack.decrement(recipe.input.count)
                 if (inputStack.isEmpty) {
                     inventory[MolecularTransformerBlock.INPUT_SLOT] = ItemStack.EMPTY
                 }
@@ -117,7 +131,7 @@ class MolecularTransformerBlockEntity(
 
         // Update sync data
         sync.energy = sync.amount.toInt().coerceIn(0, Int.MAX_VALUE)
-        sync.progress = getProgress().toInt()
+        sync.progress = energyUsed.coerceIn(0L, Int.MAX_VALUE.toLong()).toInt()
         sync.requiredEnergy = getRequiredEnergy().toInt()
 
         sync.syncCurrentTickFlow()
@@ -128,11 +142,6 @@ class MolecularTransformerBlockEntity(
         if (currentOutput.isEmpty) return true
         if (!ItemStack.canCombine(currentOutput, output)) return false
         return currentOutput.count + output.count <= currentOutput.maxCount
-    }
-
-    private fun getProgress(): Float {
-        val recipe = currentRecipe ?: return 0f
-        return energyUsed.toFloat() / recipe.energy.toFloat()
     }
 
     private fun getRequiredEnergy(): Long = currentRecipe?.energy ?: 0

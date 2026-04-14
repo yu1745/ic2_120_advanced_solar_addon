@@ -13,6 +13,7 @@ import net.minecraft.entity.player.PlayerInventory
 import net.minecraft.screen.slot.Slot
 import net.minecraft.text.Text
 import stardust.fabric.registry.annotation.ModScreen
+import kotlin.math.ceil
 
 @ModScreen(block = MolecularTransformerBlock::class)
 class MolecularTransformerScreen(
@@ -42,9 +43,15 @@ class MolecularTransformerScreen(
         val left = x
         val top = y
         val energy = handler.sync.energy.toLong().coerceAtLeast(0)
-        val progress = handler.sync.progress.toLong()
+        val progress = handler.sync.progress.toLong().coerceAtLeast(0)
         val requiredEnergy = handler.sync.requiredEnergy.toLong().coerceAtLeast(1)
-        val progressFraction = if (requiredEnergy > 0) (progress.toFloat() / requiredEnergy).coerceIn(0f, 1f) else 0f
+        val progressFraction = (progress.toFloat() / requiredEnergy.toFloat()).coerceIn(0f, 1f)
+        val progressPercent = progressFraction * 100f
+        val consumePerTick = handler.sync.avgConsumed.toLong().coerceAtLeast(0)
+        val remainingEnergy = (requiredEnergy - progress).coerceAtLeast(0)
+        val remainingTicks = if (consumePerTick > 0 && remainingEnergy > 0) {
+            ceil(remainingEnergy.toDouble() / consumePerTick.toDouble()).toLong()
+        } else 0L
 
         val content: UiScope.() -> Unit = {
             Column(
@@ -66,8 +73,24 @@ class MolecularTransformerScreen(
 
                 Flex(direction = FlexDirection.ROW, alignItems = AlignItems.CENTER, gap = 8) {
                     Text(Text.translatable("gui.ic2_120_advanced_solar_addon.progress").string + " ", color = 0xAAAAAA)
-                    Text("${EnergyFormatUtils.formatEu(progress)} / ${EnergyFormatUtils.formatEu(requiredEnergy)} EU",
-                        color = 0xFFFFFF, shadow = false)
+                    Text(
+                        "${EnergyFormatUtils.formatEu(progress)} / ${EnergyFormatUtils.formatEu(requiredEnergy)} (${String.format("%.2f", progressPercent)}%)",
+                        color = 0xFFFFFF,
+                        shadow = false
+                    )
+                }
+
+                Flex(direction = FlexDirection.ROW, alignItems = AlignItems.CENTER, gap = 8) {
+                    Text("Time ", color = 0xAAAAAA)
+                    Text(
+                        if (consumePerTick > 0) {
+                            "${formatTicksAsTime(remainingTicks)} @ ${EnergyFormatUtils.formatEu(consumePerTick)} EU/t"
+                        } else {
+                            "--:-- @ 0 EU/t"
+                        },
+                        color = 0xFFFFFF,
+                        shadow = false
+                    )
                 }
             }
 
@@ -109,6 +132,15 @@ class MolecularTransformerScreen(
     override fun mouseClicked(mouseX: Double, mouseY: Double, button: Int): Boolean {
         if (ui.mouseClicked(mouseX, mouseY, button)) return true
         return super.mouseClicked(mouseX, mouseY, button)
+    }
+
+    private fun formatTicksAsTime(ticks: Long): String {
+        val totalSeconds = ticks / 20L
+        val hours = totalSeconds / 3600L
+        val minutes = (totalSeconds % 3600L) / 60L
+        val seconds = totalSeconds % 60L
+        return if (hours > 0) String.format("%d:%02d:%02d", hours, minutes, seconds)
+        else String.format("%02d:%02d", minutes, seconds)
     }
 
     companion object {
