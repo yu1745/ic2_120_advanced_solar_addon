@@ -3,6 +3,7 @@ package ic2_120_advanced_solar_addon.client.render
 import ic2_120_advanced_solar_addon.content.block.MolecularTransformerBlock
 import ic2_120_advanced_solar_addon.content.block.MolecularTransformerBlockEntity
 import net.minecraft.client.render.LightmapTextureManager
+import net.minecraft.client.render.OverlayTexture
 import net.minecraft.client.render.RenderLayer
 import net.minecraft.client.render.VertexConsumer
 import net.minecraft.client.render.VertexConsumerProvider
@@ -10,17 +11,39 @@ import net.minecraft.client.render.block.entity.BlockEntityRenderer
 import net.minecraft.client.render.block.entity.BlockEntityRendererFactory
 import net.minecraft.client.util.math.MatrixStack
 import net.minecraft.util.Identifier
+import net.minecraft.util.math.RotationAxis
 import org.joml.Matrix3f
 import org.joml.Matrix4f
 
 class MolecularTransformerBlockEntityRenderer(
-    private val context: BlockEntityRendererFactory.Context
+    context: BlockEntityRendererFactory.Context
 ) : BlockEntityRenderer<MolecularTransformerBlockEntity> {
 
     companion object {
-        private val TEXTURE = Identifier.of("ic2_120_advanced_solar_addon", "textures/models/texturemoleculartransformer")
-        private val PLAZMA_TEXTURE = Identifier.of("ic2_120_advanced_solar_addon", "textures/models/plazma")
-        private val PARTICLES_TEXTURE = Identifier.of("ic2_120_advanced_solar_addon", "textures/models/particles")
+        private val TEXTURE = Identifier.of("ic2_120_advanced_solar_addon", "textures/models/texturemoleculartransformer.png")
+        private val PLAZMA_TEXTURE = Identifier.of("ic2_120_advanced_solar_addon", "textures/models/plazma.png")
+        private const val TW = 128f
+        private const val TH = 64f
+
+        // Convert model pixel coords to block coords.
+        // Original MC 1.12 TESR: translate(x+0.5, y+1.5, z+0.5), rotate(180°, Z), scale(0.0625)
+        // Result: bx = 0.5 - px/16, by = 1.5 - py/16, bz = 0.5 + pz/16
+        private fun px(px: Float) = 0.5f - px / 16f
+        private fun py(py: Float) = 1.5f - py / 16f
+        private fun pz(pz: Float) = 0.5f + pz / 16f
+
+        // coreBottom: texOff(0,0), pixel(-5,20,-5)-(5,23,5), size 10x3x10
+        private val CORE_BOTTOM = floatArrayOf(px(5f), py(23f), pz(-5f), px(-5f), py(20f), pz(5f))
+        // coreWorkZone: texOff(0,44), pixel(-3,12,-3)-(3,21,3), size 6x9x6
+        private val CORE_WORK_ZONE = floatArrayOf(px(3f), py(21f), pz(-3f), px(-3f), py(12f), pz(3f))
+        // coreTopElectr: texOff(25,44), pixel(-2,8,-1.4667)-(1,10,1.5333), size 3x2x3
+        private val CORE_TOP_ELECTR = floatArrayOf(px(1f), py(10f), pz(-1.466667f), px(-2f), py(8f), pz(1.533333f))
+        // coreTopPlate: texOff(0,30), pixel(-5,9,-4.5)-(4,12,4.5), size 9x3x9
+        private val CORE_TOP_PLATE = floatArrayOf(px(4f), py(12f), pz(-4.5f), px(-5f), py(9f), pz(4.5f))
+        // firstElTop: texOff(20,16), pixel(3,8,-5)-(7,11,5), size 4x3x10
+        private val EL_TOP = floatArrayOf(px(7f), py(11f), pz(-5f), px(3f), py(8f), pz(5f))
+        // firstElBottom: texOff(49,16), pixel(4,19,-3)-(7,24,3), size 3x5x6
+        private val EL_BOTTOM = floatArrayOf(px(7f), py(24f), pz(-3f), px(4f), py(19f), pz(3f))
     }
 
     override fun render(
@@ -32,208 +55,171 @@ class MolecularTransformerBlockEntityRenderer(
         overlay: Int
     ) {
         val state = entity.world?.getBlockState(entity.pos) ?: return
-        val isActive = state.get(MolecularTransformerBlock.ACTIVE) ?: false
+        if (state.block !is MolecularTransformerBlock) return
+
+        val isActive = try { state.get(MolecularTransformerBlock.ACTIVE) } catch (_: Exception) { false }
+        val fullLight = LightmapTextureManager.MAX_LIGHT_COORDINATE
+        val ov = overlay.takeUnless { it == 0 } ?: OverlayTexture.DEFAULT_UV
+
+        val vc = vertexConsumers.getBuffer(RenderLayer.getEntityCutoutNoCull(TEXTURE))
 
         matrices.push()
 
-        // Rotate based on facing
-        val facing = state.get(net.minecraft.state.property.Properties.HORIZONTAL_FACING)
-        val rotation = when (facing) {
-            net.minecraft.util.math.Direction.EAST -> 90f
-            net.minecraft.util.math.Direction.SOUTH -> 180f
-            net.minecraft.util.math.Direction.WEST -> 270f
-            else -> 0f
-        }
-        matrices.multiply(net.minecraft.util.math.RotationAxis.POSITIVE_Y.rotationDegrees(rotation))
+        // Static model parts (no rotation)
+        renderBoxBothSides(vc, matrices, fullLight, ov, CORE_BOTTOM, 0, 0, 10, 3, 10)
+        renderBoxBothSides(vc, matrices, fullLight, ov, CORE_TOP_ELECTR, 25, 44, 3, 2, 3)
+        renderBoxBothSides(vc, matrices, fullLight, ov, CORE_TOP_PLATE, 0, 30, 9, 3, 9)
 
-        // Render base model
-        renderModel(matrices, vertexConsumers, light, overlay)
+        // First electrode (no rotation)
+        renderBoxBothSides(vc, matrices, fullLight, ov, EL_TOP, 20, 16, 4, 3, 10)
+        renderBoxBothSides(vc, matrices, fullLight, ov, EL_BOTTOM, 49, 16, 3, 5, 6)
 
-        // Render active core effect
-        if (isActive) {
-            renderActiveCore(matrices, vertexConsumers, tickDelta)
-        }
+        // Second electrode: Y rotation -120°
+        matrices.push()
+        matrices.translate(0.5, 0.5, 0.5)
+        matrices.multiply(RotationAxis.POSITIVE_Y.rotationDegrees(-120f))
+        matrices.translate(-0.5, -0.5, -0.5)
+        renderBoxBothSides(vc, matrices, fullLight, ov, EL_TOP, 20, 16, 4, 3, 10)
+        renderBoxBothSides(vc, matrices, fullLight, ov, EL_BOTTOM, 49, 16, 3, 5, 6)
+        matrices.pop()
+
+        // Third electrode: Y rotation +120°
+        matrices.push()
+        matrices.translate(0.5, 0.5, 0.5)
+        matrices.multiply(RotationAxis.POSITIVE_Y.rotationDegrees(120f))
+        matrices.translate(-0.5, -0.5, -0.5)
+        renderBoxBothSides(vc, matrices, fullLight, ov, EL_TOP, 20, 16, 4, 3, 10)
+        renderBoxBothSides(vc, matrices, fullLight, ov, EL_BOTTOM, 49, 16, 3, 5, 6)
+        matrices.pop()
+
+        // Translucent coreWorkZone
+        val vcTrans = vertexConsumers.getBuffer(RenderLayer.getEntityTranslucent(TEXTURE))
+        renderBoxBothSides(vcTrans, matrices, fullLight, ov, CORE_WORK_ZONE, 0, 44, 6, 9, 6)
 
         matrices.pop()
+
+        // Active core effect
+        if (isActive) {
+            renderActiveCore(matrices, vertexConsumers, fullLight, ov)
+        }
     }
 
-    private fun renderModel(
-        matrices: MatrixStack,
-        vertexConsumers: VertexConsumerProvider,
-        light: Int,
-        overlay: Int
+    /**
+     * Renders a box with both sides of each face visible.
+     * coords = [x1, y1, z1, x2, y2, z2] in block units.
+     * texU/texV = texture offset, sizeX/Y/Z = box dimensions for UV calculation.
+     * UV layout matches MC 1.12 ModelRenderer:
+     *   Top(+Y):   (u+d, v)       size(w,d)
+     *   Bottom(-Y):(u+d+w, v)     size(w,d)
+     *   North(-Z): (u+d+w, v+d)   size(w,h)
+     *   South(+Z): (u+d, v+d)     size(w,h)
+     *   West(-X):  (u, v+d)       size(d,h)
+     *   East(+X):  (u+d+w+d, v+d) size(d,h)
+     *   where d=depth(sizeZ), w=width(sizeX), h=height(sizeY)
+     */
+    private fun renderBoxBothSides(
+        vc: VertexConsumer, matrices: MatrixStack,
+        light: Int, overlay: Int,
+        coords: FloatArray,
+        texU: Int, texV: Int,
+        sizeX: Int, sizeY: Int, sizeZ: Int
     ) {
-        val vc = vertexConsumers.getBuffer(RenderLayer.getEntitySolid(TEXTURE))
         val entry = matrices.peek()
         val pos = entry.positionMatrix
-        val normal = entry.normalMatrix
+        val norm = entry.normalMatrix
 
-        // Core Bottom (10x3x10) at y=0, offset from center
-        renderBox(vc, pos, normal, light, overlay,
-            x = -5f, y = 0f, z = -5f,
-            width = 10f, height = 3f, depth = 10f,
-            u = 0f, v = 0f, textureWidth = 128f, textureHeight = 64f
-        )
+        val x1 = coords[0]; val y1 = coords[1]; val z1 = coords[2]
+        val x2 = coords[3]; val y2 = coords[4]; val z2 = coords[5]
+        val w = sizeX.toFloat(); val h = sizeY.toFloat(); val d = sizeZ.toFloat()
 
-        // Core Work Zone (6x9x6) at y=3, transparent
-        val vcTranslucent = vertexConsumers.getBuffer(RenderLayer.getEntityTranslucent(TEXTURE))
-        renderBox(vcTranslucent, pos, normal, light, overlay,
-            x = -3f, y = 3f, z = -3f,
-            width = 6f, height = 9f, depth = 6f,
-            u = 0f, v = 0f, textureWidth = 128f, textureHeight = 64f
-        )
+        // Top (+Y)
+        quadBoth(vc, pos, norm, light, overlay,
+            x1, y2, z2,  x2, y2, z2,  x2, y2, z1,  x1, y2, z1,
+            (texU+d)/TW, texV/TH, (texU+d+w)/TW, (texV+d)/TH,
+            0f, 1f, 0f)
 
-        // Core Top Electr (3x2x3) at y=12
-        renderBox(vc, pos, normal, light, overlay,
-            x = -1.5f, y = 12f, z = -1.5f,
-            width = 3f, height = 2f, depth = 3f,
-            u = 0f, v = 0f, textureWidth = 128f, textureHeight = 64f
-        )
+        // Bottom (-Y)
+        quadBoth(vc, pos, norm, light, overlay,
+            x1, y1, z1,  x2, y1, z1,  x2, y1, z2,  x1, y1, z2,
+            (texU+d+w)/TW, texV/TH, (texU+d+2*w)/TW, (texV+d)/TH,
+            0f, -1f, 0f)
 
-        // Core Top Plate (9x3x9) at y=14
-        renderBox(vc, pos, normal, light, overlay,
-            x = -4.5f, y = 14f, z = -4.5f,
-            width = 9f, height = 3f, depth = 9f,
-            u = 0f, v = 0f, textureWidth = 128f, textureHeight = 64f
-        )
+        // North (-Z)
+        quadBoth(vc, pos, norm, light, overlay,
+            x2, y2, z1,  x1, y2, z1,  x1, y1, z1,  x2, y1, z1,
+            (texU+d+w)/TW, (texV+d)/TH, (texU+d)/TW, (texV+d+h)/TH,
+            0f, 0f, -1f)
 
-        // Electrodes (3 pairs)
-        // First electrode
-        renderBox(vc, pos, normal, light, overlay,
-            x = 3f, y = 3f, z = -3f,
-            width = 4f, height = 5f, depth = 6f,
-            u = 0f, v = 0f, textureWidth = 128f, textureHeight = 64f
-        )
+        // South (+Z)
+        quadBoth(vc, pos, norm, light, overlay,
+            x1, y2, z2,  x2, y2, z2,  x2, y1, z2,  x1, y1, z2,
+            (texU+d)/TW, (texV+d)/TH, (texU+d+w)/TW, (texV+d+h)/TH,
+            0f, 0f, 1f)
 
-        // Second electrode (rotated -120 degrees)
-        matrices.push()
-        matrices.multiply(net.minecraft.util.math.RotationAxis.POSITIVE_Y.rotationDegrees(-120f))
-        renderBox(vc, pos, normal, light, overlay,
-            x = 3f, y = 3f, z = -3f,
-            width = 4f, height = 5f, depth = 6f,
-            u = 0f, v = 0f, textureWidth = 128f, textureHeight = 64f
-        )
-        matrices.pop()
+        // West (-X)
+        quadBoth(vc, pos, norm, light, overlay,
+            x1, y2, z1,  x1, y2, z2,  x1, y1, z2,  x1, y1, z1,
+            texU/TW, (texV+d)/TH, (texU+d)/TW, (texV+d+h)/TH,
+            -1f, 0f, 0f)
 
-        // Third electrode (rotated 120 degrees)
-        matrices.push()
-        matrices.multiply(net.minecraft.util.math.RotationAxis.POSITIVE_Y.rotationDegrees(120f))
-        renderBox(vc, pos, normal, light, overlay,
-            x = 3f, y = 3f, z = -3f,
-            width = 4f, height = 5f, depth = 6f,
-            u = 0f, v = 0f, textureWidth = 128f, textureHeight = 64f
-        )
-        matrices.pop()
+        // East (+X)
+        quadBoth(vc, pos, norm, light, overlay,
+            x2, y2, z2,  x2, y2, z1,  x2, y1, z1,  x2, y1, z2,
+            (texU+d+w)/TW, (texV+d)/TH, (texU+d+w+d)/TW, (texV+d+h)/TH,
+            1f, 0f, 0f)
+    }
+
+    /** Render a quad from both sides (front + back with reversed winding). */
+    private fun quadBoth(
+        vc: VertexConsumer,
+        pos: Matrix4f, norm: Matrix3f,
+        light: Int, overlay: Int,
+        x0: Float, y0: Float, z0: Float,
+        x1: Float, y1: Float, z1: Float,
+        x2: Float, y2: Float, z2: Float,
+        x3: Float, y3: Float, z3: Float,
+        u0: Float, v0: Float, u1: Float, v1: Float,
+        nx: Float, ny: Float, nz: Float
+    ) {
+        // Front side
+        vertex(vc, pos, norm, x0, y0, z0, u0, v0, nx, ny, nz, light, overlay)
+        vertex(vc, pos, norm, x1, y1, z1, u1, v0, nx, ny, nz, light, overlay)
+        vertex(vc, pos, norm, x2, y2, z2, u1, v1, nx, ny, nz, light, overlay)
+        vertex(vc, pos, norm, x3, y3, z3, u0, v1, nx, ny, nz, light, overlay)
+        // Back side (reversed winding + flipped normal)
+        vertex(vc, pos, norm, x3, y3, z3, u0, v1, -nx, -ny, -nz, light, overlay)
+        vertex(vc, pos, norm, x2, y2, z2, u1, v1, -nx, -ny, -nz, light, overlay)
+        vertex(vc, pos, norm, x1, y1, z1, u1, v0, -nx, -ny, -nz, light, overlay)
+        vertex(vc, pos, norm, x0, y0, z0, u0, v0, -nx, -ny, -nz, light, overlay)
+    }
+
+    private fun vertex(
+        vc: VertexConsumer,
+        pos: Matrix4f, norm: Matrix3f,
+        x: Float, y: Float, z: Float,
+        u: Float, v: Float,
+        nx: Float, ny: Float, nz: Float,
+        light: Int, overlay: Int
+    ) {
+        vc.vertex(pos, x, y, z)
+            .color(255, 255, 255, 255)
+            .texture(u, v)
+            .overlay(overlay)
+            .light(light)
+            .normal(norm, nx, ny, nz)
+            .next()
     }
 
     private fun renderActiveCore(
         matrices: MatrixStack,
         vertexConsumers: VertexConsumerProvider,
-        tickDelta: Float
+        light: Int,
+        overlay: Int
     ) {
         val vc = vertexConsumers.getBuffer(RenderLayer.getEntityTranslucent(PLAZMA_TEXTURE))
-        val entry = matrices.peek()
-        val pos = entry.positionMatrix
-        val normal = entry.normalMatrix
-        val fullLight = LightmapTextureManager.MAX_LIGHT_COORDINATE
-
-        // Pulsing effect
-        val pulse = (kotlin.math.sin((System.currentTimeMillis() % 1000000) / 1000.0) * 0.5 + 0.5).toFloat()
-        val alpha = (100 + 100 * pulse).toInt().coerceIn(50, 200)
-
-        // Render glowing core at center
-        renderBox(vc, pos, normal, fullLight, overlay = 0,
-            x = -1.5f, y = 5f, z = -1.5f,
-            width = 3f, height = 4f, depth = 3f,
-            u = 0f, v = 0f, textureWidth = 64f, textureHeight = 64f,
-            red = 255, green = 255, blue = 255, alpha = alpha
-        )
-    }
-
-    private fun renderBox(
-        vc: VertexConsumer,
-        pos: Matrix4f,
-        normal: Matrix3f,
-        light: Int,
-        overlay: Int,
-        x: Float, y: Float, z: Float,
-        width: Float, height: Float, depth: Float,
-        u: Float, v: Float,
-        textureWidth: Float, textureHeight: Float,
-        red: Int = 255, green: Int = 255, blue: Int = 255, alpha: Int = 255
-    ) {
-        val x2 = x + width
-        val y2 = y + height
-        val z2 = z + depth
-
-        // Bottom
-        quad(vc, pos, normal, light, overlay,
-            x, y, z, x2, y, z, x2, y, z2, x, y, z2,
-            0f, -1f, 0f, red, green, blue, alpha
-        )
-        // Top
-        quad(vc, pos, normal, light, overlay,
-            x, y2, z2, x2, y2, z2, x2, y2, z, x, y2, z,
-            0f, 1f, 0f, red, green, blue, alpha
-        )
-        // North
-        quad(vc, pos, normal, light, overlay,
-            x, y, z2, x2, y, z2, x2, y2, z2, x, y2, z2,
-            0f, 0f, 1f, red, green, blue, alpha
-        )
-        // South
-        quad(vc, pos, normal, light, overlay,
-            x2, y, z, x, y, z, x, y2, z, x2, y2, z,
-            0f, 0f, -1f, red, green, blue, alpha
-        )
-        // West
-        quad(vc, pos, normal, light, overlay,
-            x, y, z, x, y, z2, x, y2, z2, x, y2, z,
-            -1f, 0f, 0f, red, green, blue, alpha
-        )
-        // East
-        quad(vc, pos, normal, light, overlay,
-            x2, y, z2, x2, y, z, x2, y2, z, x2, y2, z2,
-            1f, 0f, 0f, red, green, blue, alpha
-        )
-    }
-
-    private fun quad(
-        vc: VertexConsumer,
-        pos: Matrix4f,
-        normal: Matrix3f,
-        light: Int,
-        overlay: Int,
-        x1: Float, y1: Float, z1: Float,
-        x2: Float, y2: Float, z2: Float,
-        x3: Float, y3: Float, z3: Float,
-        x4: Float, y4: Float, z4: Float,
-        nx: Float, ny: Float, nz: Float,
-        red: Int, green: Int, blue: Int, alpha: Int
-    ) {
-        vertex(vc, pos, normal, x1, y1, z1, nx, ny, nz, light, overlay, red, green, blue, alpha)
-        vertex(vc, pos, normal, x2, y2, z2, nx, ny, nz, light, overlay, red, green, blue, alpha)
-        vertex(vc, pos, normal, x3, y3, z3, nx, ny, nz, light, overlay, red, green, blue, alpha)
-        vertex(vc, pos, normal, x4, y4, z4, nx, ny, nz, light, overlay, red, green, blue, alpha)
-    }
-
-    private fun vertex(
-        vc: VertexConsumer,
-        pos: Matrix4f,
-        normal: Matrix3f,
-        x: Float, y: Float, z: Float,
-        nx: Float, ny: Float, nz: Float,
-        light: Int,
-        overlay: Int,
-        red: Int, green: Int, blue: Int, alpha: Int
-    ) {
-        vc.vertex(pos, x, y, z)
-            .color(red, green, blue, alpha)
-            .texture(0f, 0f)
-            .overlay(overlay)
-            .light(light)
-            .normal(normal, nx, ny, nz)
-            .next()
+        renderBoxBothSides(vc, matrices, light, overlay,
+            floatArrayOf(px(1.5f), py(9f), pz(-1.5f), px(-1.5f), py(5f), pz(1.5f)),
+            0, 0, 3, 4, 3)
     }
 
     override fun rendersOutsideBoundingBox(entity: MolecularTransformerBlockEntity): Boolean = true

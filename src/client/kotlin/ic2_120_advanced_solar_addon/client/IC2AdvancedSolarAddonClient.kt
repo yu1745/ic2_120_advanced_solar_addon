@@ -15,9 +15,12 @@ object IC2AdvancedSolarAddonClient : ClientModInitializer {
         )
 
         // Register Block Entity Renderers
+        val beType = MolecularTransformerBlockEntity::class.type()
+        println("[MT-BER] Registering BER for type: $beType")
         BlockEntityRendererFactories.register(
-            MolecularTransformerBlockEntity::class.type(),
+            beType,
             ::MolecularTransformerBlockEntityRenderer
         )
+        println("[MT-BER] Registration complete")
     }
 }

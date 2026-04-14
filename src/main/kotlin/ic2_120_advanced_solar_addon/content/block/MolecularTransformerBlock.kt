@@ -2,6 +2,7 @@ package ic2_120_advanced_solar_addon.content.block
 
 import ic2_120_advanced_solar_addon.content.tab.SolarMachinesTab
 import ic2_120.content.block.MachineBlock
+import net.minecraft.block.BlockRenderType
 import net.minecraft.block.BlockState
 import net.minecraft.block.entity.BlockEntity
 import net.minecraft.block.entity.BlockEntityTicker
@@ -68,4 +69,6 @@ class MolecularTransformerBlock : MachineBlock() {
 
     override fun getPlacementState(ctx: ItemPlacementContext): BlockState? =
         super.getPlacementState(ctx)?.with(ACTIVE, false)
+
+    override fun getRenderType(state: BlockState): BlockRenderType = BlockRenderType.INVISIBLE
 }
