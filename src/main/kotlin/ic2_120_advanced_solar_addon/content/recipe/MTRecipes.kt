@@ -1,32 +1,49 @@
 package ic2_120_advanced_solar_addon.content.recipe
 
+import ic2_120_advanced_solar_addon.config.Ic2AdvancedSolarAddonConfig
 import net.minecraft.item.ItemStack
 import net.minecraft.item.Items
+import net.minecraft.util.Identifier
+import net.minecraft.registry.Registries
 
 object MTRecipes {
     private val recipes = mutableListOf<MTRecipe>()
-    
+
     data class MTRecipe(
         val input: ItemStack,
         val output: ItemStack,
         val energy: Long
     )
-    
+
     fun init() {
-        // 注册配方：铁锭 -> 铱矿石，耗电9M EU
-        // 注意：这里使用字符串ID，实际实现时需要获取IC2的铱矿石物品
-        recipes.add(MTRecipe(
-            input = ItemStack(Items.IRON_INGOT),
-            output = ItemStack(Items.DIAMOND), // 临时用钻石代替，实际需要IC2铱矿石
-            energy = 9_000_000
-        ))
+        // 从配置文件加载配方
+        val configRecipes = Ic2AdvancedSolarAddonConfig.getMolecularTransformerRecipes()
+        recipes.clear()
+
+        for (configRecipe in configRecipes) {
+            val inputId = Identifier.tryParse(configRecipe.input)
+            val outputId = Identifier.tryParse(configRecipe.output)
+
+            if (inputId != null && outputId != null) {
+                val inputItem = Registries.ITEM.get(inputId)
+                val outputItem = Registries.ITEM.get(outputId)
+
+                if (inputItem != Items.AIR && outputItem != Items.AIR && configRecipe.energy > 0) {
+                    recipes.add(MTRecipe(
+                        input = ItemStack(inputItem),
+                        output = ItemStack(outputItem),
+                        energy = configRecipe.energy
+                    ))
+                }
+            }
+        }
     }
-    
+
     fun findRecipe(input: ItemStack): MTRecipe? {
         return recipes.find { recipe ->
             ItemStack.canCombine(recipe.input, input) && input.count >= recipe.input.count
         }
     }
-    
+
     fun getRecipes(): List<MTRecipe> = recipes.toList()
 }

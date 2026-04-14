@@ -54,7 +54,7 @@ class MolecularTransformerBlockEntityRenderer(
         light: Int,
         overlay: Int
     ) {
-        val state = entity.world?.getBlockState(entity.pos) ?: return
+        val state = entity.world?.getBlockState(entity.pos) ?: entity.cachedState
         if (state.block !is MolecularTransformerBlock) return
 
         val isActive = try { state.get(MolecularTransformerBlock.ACTIVE) } catch (_: Exception) { false }
@@ -66,21 +66,21 @@ class MolecularTransformerBlockEntityRenderer(
         matrices.push()
 
         // Static model parts (no rotation)
-        renderBoxBothSides(vc, matrices, fullLight, ov, CORE_BOTTOM, 0, 0, 10, 3, 10)
-        renderBoxBothSides(vc, matrices, fullLight, ov, CORE_TOP_ELECTR, 25, 44, 3, 2, 3)
-        renderBoxBothSides(vc, matrices, fullLight, ov, CORE_TOP_PLATE, 0, 30, 9, 3, 9)
+        renderBox(vc, matrices, fullLight, ov, CORE_BOTTOM, 0, 0, 10, 3, 10)
+        renderBox(vc, matrices, fullLight, ov, CORE_TOP_ELECTR, 25, 44, 3, 2, 3)
+        renderBox(vc, matrices, fullLight, ov, CORE_TOP_PLATE, 0, 30, 9, 3, 9)
 
         // First electrode (no rotation)
-        renderBoxBothSides(vc, matrices, fullLight, ov, EL_TOP, 20, 16, 4, 3, 10)
-        renderBoxBothSides(vc, matrices, fullLight, ov, EL_BOTTOM, 49, 16, 3, 5, 6)
+        renderBox(vc, matrices, fullLight, ov, EL_TOP, 20, 16, 4, 3, 10)
+        renderBox(vc, matrices, fullLight, ov, EL_BOTTOM, 49, 16, 3, 5, 6)
 
         // Second electrode: Y rotation -120°
         matrices.push()
         matrices.translate(0.5, 0.5, 0.5)
         matrices.multiply(RotationAxis.POSITIVE_Y.rotationDegrees(-120f))
         matrices.translate(-0.5, -0.5, -0.5)
-        renderBoxBothSides(vc, matrices, fullLight, ov, EL_TOP, 20, 16, 4, 3, 10)
-        renderBoxBothSides(vc, matrices, fullLight, ov, EL_BOTTOM, 49, 16, 3, 5, 6)
+        renderBox(vc, matrices, fullLight, ov, EL_TOP, 20, 16, 4, 3, 10)
+        renderBox(vc, matrices, fullLight, ov, EL_BOTTOM, 49, 16, 3, 5, 6)
         matrices.pop()
 
         // Third electrode: Y rotation +120°
@@ -88,13 +88,13 @@ class MolecularTransformerBlockEntityRenderer(
         matrices.translate(0.5, 0.5, 0.5)
         matrices.multiply(RotationAxis.POSITIVE_Y.rotationDegrees(120f))
         matrices.translate(-0.5, -0.5, -0.5)
-        renderBoxBothSides(vc, matrices, fullLight, ov, EL_TOP, 20, 16, 4, 3, 10)
-        renderBoxBothSides(vc, matrices, fullLight, ov, EL_BOTTOM, 49, 16, 3, 5, 6)
+        renderBox(vc, matrices, fullLight, ov, EL_TOP, 20, 16, 4, 3, 10)
+        renderBox(vc, matrices, fullLight, ov, EL_BOTTOM, 49, 16, 3, 5, 6)
         matrices.pop()
 
         // Translucent coreWorkZone
         val vcTrans = vertexConsumers.getBuffer(RenderLayer.getEntityTranslucent(TEXTURE))
-        renderBoxBothSides(vcTrans, matrices, fullLight, ov, CORE_WORK_ZONE, 0, 44, 6, 9, 6)
+        renderBox(vcTrans, matrices, fullLight, ov, CORE_WORK_ZONE, 0, 44, 6, 9, 6)
 
         matrices.pop()
 
@@ -105,7 +105,7 @@ class MolecularTransformerBlockEntityRenderer(
     }
 
     /**
-     * Renders a box with both sides of each face visible.
+     * Renders a box (single-sided, noCull handles adjacent block culling).
      * coords = [x1, y1, z1, x2, y2, z2] in block units.
      * texU/texV = texture offset, sizeX/Y/Z = box dimensions for UV calculation.
      * UV layout matches MC 1.12 ModelRenderer:
@@ -117,7 +117,7 @@ class MolecularTransformerBlockEntityRenderer(
      *   East(+X):  (u+d+w+d, v+d) size(d,h)
      *   where d=depth(sizeZ), w=width(sizeX), h=height(sizeY)
      */
-    private fun renderBoxBothSides(
+    private fun renderBox(
         vc: VertexConsumer, matrices: MatrixStack,
         light: Int, overlay: Int,
         coords: FloatArray,
@@ -133,44 +133,43 @@ class MolecularTransformerBlockEntityRenderer(
         val w = sizeX.toFloat(); val h = sizeY.toFloat(); val d = sizeZ.toFloat()
 
         // Top (+Y)
-        quadBoth(vc, pos, norm, light, overlay,
+        quad(vc, pos, norm, light, overlay,
             x1, y2, z2,  x2, y2, z2,  x2, y2, z1,  x1, y2, z1,
             (texU+d)/TW, texV/TH, (texU+d+w)/TW, (texV+d)/TH,
             0f, 1f, 0f)
 
         // Bottom (-Y)
-        quadBoth(vc, pos, norm, light, overlay,
+        quad(vc, pos, norm, light, overlay,
             x1, y1, z1,  x2, y1, z1,  x2, y1, z2,  x1, y1, z2,
             (texU+d+w)/TW, texV/TH, (texU+d+2*w)/TW, (texV+d)/TH,
             0f, -1f, 0f)
 
         // North (-Z)
-        quadBoth(vc, pos, norm, light, overlay,
+        quad(vc, pos, norm, light, overlay,
             x2, y2, z1,  x1, y2, z1,  x1, y1, z1,  x2, y1, z1,
             (texU+d+w)/TW, (texV+d)/TH, (texU+d)/TW, (texV+d+h)/TH,
             0f, 0f, -1f)
 
         // South (+Z)
-        quadBoth(vc, pos, norm, light, overlay,
+        quad(vc, pos, norm, light, overlay,
             x1, y2, z2,  x2, y2, z2,  x2, y1, z2,  x1, y1, z2,
             (texU+d)/TW, (texV+d)/TH, (texU+d+w)/TW, (texV+d+h)/TH,
             0f, 0f, 1f)
 
         // West (-X)
-        quadBoth(vc, pos, norm, light, overlay,
+        quad(vc, pos, norm, light, overlay,
             x1, y2, z1,  x1, y2, z2,  x1, y1, z2,  x1, y1, z1,
             texU/TW, (texV+d)/TH, (texU+d)/TW, (texV+d+h)/TH,
             -1f, 0f, 0f)
 
         // East (+X)
-        quadBoth(vc, pos, norm, light, overlay,
+        quad(vc, pos, norm, light, overlay,
             x2, y2, z2,  x2, y2, z1,  x2, y1, z1,  x2, y1, z2,
             (texU+d+w)/TW, (texV+d)/TH, (texU+d+w+d)/TW, (texV+d+h)/TH,
             1f, 0f, 0f)
     }
 
-    /** Render a quad from both sides (front + back with reversed winding). */
-    private fun quadBoth(
+    private fun quad(
         vc: VertexConsumer,
         pos: Matrix4f, norm: Matrix3f,
         light: Int, overlay: Int,
@@ -181,16 +180,10 @@ class MolecularTransformerBlockEntityRenderer(
         u0: Float, v0: Float, u1: Float, v1: Float,
         nx: Float, ny: Float, nz: Float
     ) {
-        // Front side
         vertex(vc, pos, norm, x0, y0, z0, u0, v0, nx, ny, nz, light, overlay)
         vertex(vc, pos, norm, x1, y1, z1, u1, v0, nx, ny, nz, light, overlay)
         vertex(vc, pos, norm, x2, y2, z2, u1, v1, nx, ny, nz, light, overlay)
         vertex(vc, pos, norm, x3, y3, z3, u0, v1, nx, ny, nz, light, overlay)
-        // Back side (reversed winding + flipped normal)
-        vertex(vc, pos, norm, x3, y3, z3, u0, v1, -nx, -ny, -nz, light, overlay)
-        vertex(vc, pos, norm, x2, y2, z2, u1, v1, -nx, -ny, -nz, light, overlay)
-        vertex(vc, pos, norm, x1, y1, z1, u1, v0, -nx, -ny, -nz, light, overlay)
-        vertex(vc, pos, norm, x0, y0, z0, u0, v0, -nx, -ny, -nz, light, overlay)
     }
 
     private fun vertex(
@@ -217,7 +210,7 @@ class MolecularTransformerBlockEntityRenderer(
         overlay: Int
     ) {
         val vc = vertexConsumers.getBuffer(RenderLayer.getEntityTranslucent(PLAZMA_TEXTURE))
-        renderBoxBothSides(vc, matrices, light, overlay,
+        renderBox(vc, matrices, light, overlay,
             floatArrayOf(px(1.5f), py(9f), pz(-1.5f), px(-1.5f), py(5f), pz(1.5f)),
             0, 0, 3, 4, 3)
     }

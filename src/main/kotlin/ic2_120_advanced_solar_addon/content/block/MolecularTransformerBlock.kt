@@ -16,6 +16,9 @@ import net.minecraft.util.ActionResult
 import net.minecraft.util.Hand
 import net.minecraft.util.hit.BlockHitResult
 import net.minecraft.util.math.BlockPos
+import net.minecraft.util.shape.VoxelShape
+import net.minecraft.util.shape.VoxelShapes
+import net.minecraft.world.BlockView
 import net.minecraft.world.World
 import stardust.fabric.registry.annotation.ModBlock
 import stardust.fabric.registry.type
@@ -71,4 +74,8 @@ class MolecularTransformerBlock : MachineBlock() {
         super.getPlacementState(ctx)?.with(ACTIVE, false)
 
     override fun getRenderType(state: BlockState): BlockRenderType = BlockRenderType.INVISIBLE
+
+    // BER model is smaller than a full cube, so this block must not occlude neighbor faces.
+    override fun getCullingShape(state: BlockState, world: BlockView, pos: BlockPos): VoxelShape =
+        VoxelShapes.empty()
 }

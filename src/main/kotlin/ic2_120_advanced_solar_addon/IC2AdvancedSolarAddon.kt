@@ -1,5 +1,6 @@
 package ic2_120_advanced_solar_addon
 
+import ic2_120_advanced_solar_addon.config.Ic2AdvancedSolarAddonConfig
 import ic2_120_advanced_solar_addon.content.recipe.MTRecipes
 import ic2_120_advanced_solar_addon.content.RegistryConfigurerImpl
 import net.fabricmc.api.ModInitializer
@@ -14,6 +15,9 @@ object IC2AdvancedSolarAddon : ModInitializer {
     override fun onInitialize() {
         LOGGER.info("Initializing IC2 Advanced Solar Addon...")
 
+        // 加载配置文件
+        Ic2AdvancedSolarAddonConfig.loadOrThrow()
+
         val scanner = ClassScanner(RegistryConfigurerImpl())
         ClassScannerHolder.instance = scanner
 
@@ -27,7 +31,7 @@ object IC2AdvancedSolarAddon : ModInitializer {
             )
         )
 
-        // 初始化分子重组仪配方
+        // 初始化分子重组仪配方（从配置加载）
         MTRecipes.init()
 
         LOGGER.info("IC2 Advanced Solar Addon initialized!")

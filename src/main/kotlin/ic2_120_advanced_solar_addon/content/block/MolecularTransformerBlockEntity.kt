@@ -37,8 +37,8 @@ class MolecularTransformerBlockEntity(
     Inventory, ITieredMachine, ExtendedScreenHandlerFactory {
 
     companion object {
-        const val TIER = 3
-        const val REQUIRED_ENERGY_PER_TICK = 2048
+        const val TIER = 10
+        // const val REQUIRED_ENERGY_PER_TICK = 4096*4096
     }
 
     override val tier: Int = TIER

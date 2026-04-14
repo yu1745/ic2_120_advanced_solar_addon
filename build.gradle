@@ -2,6 +2,7 @@ plugins {
     id 'net.fabricmc.fabric-loom-remap' version "${loom_version}"
     id 'maven-publish'
     id "org.jetbrains.kotlin.jvm" version "2.3.10"
+    id "org.jetbrains.kotlin.plugin.serialization" version "2.3.10"
 }
 
 version = project.mod_version
@@ -51,6 +52,10 @@ dependencies {
 
         // TeamReborn Energy API
     modImplementation "teamreborn:energy:${project.energy_api_version}"
+
+    // YAML config via kotlinx.serialization
+    implementation "org.jetbrains.kotlinx:kotlinx-serialization-core:${project.kotlinx_serialization_version}"
+    implementation "org.jetbrains.kotlinx:kotlinx-serialization-json:${project.kotlinx_serialization_version}"
 }
 
 processResources {
