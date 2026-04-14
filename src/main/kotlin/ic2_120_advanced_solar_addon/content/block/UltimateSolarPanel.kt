@@ -3,7 +3,7 @@ package ic2_120_advanced_solar_addon.content.block
 import ic2_120_advanced_solar_addon.content.block.AdvancedSolarPanelBlock
 import ic2_120_advanced_solar_addon.content.block.HybridSolarPanelBlock
 import ic2_120_advanced_solar_addon.content.item.MtCore
-import ic2_120_advanced_solar_addon.content.item.SunnariumAlloy
+import ic2_120_advanced_solar_addon.content.item.EnrichedSunnariumAlloy
 import ic2_120.content.block.MachineBlock
 import ic2_120.content.item.CoalChunk
 import ic2_120.registry.CreativeTab
@@ -87,7 +87,7 @@ class UltimateSolarPanelBlock : MachineBlock() {
         @RecipeProvider
         fun generateRecipes(exporter: Consumer<RecipeJsonProvider>) {
             val mtCore = MtCore::class.instance()
-            val sunnariumAlloy = SunnariumAlloy::class.instance()
+            val enrichedSunnariumAlloy = EnrichedSunnariumAlloy::class.instance()
 
             ShapedRecipeJsonBuilder.create(RecipeCategory.MISC, UltimateSolarPanelBlock::class.item(), 1)
                 .pattern(" L ")
@@ -96,7 +96,7 @@ class UltimateSolarPanelBlock : MachineBlock() {
                 .input('L', Items.LAPIS_BLOCK)
                 .input('C', CoalChunk::class.instance())
                 .input('M', mtCore)
-                .input('S', sunnariumAlloy)
+                .input('S', enrichedSunnariumAlloy)
                 .criterion(hasItem(mtCore), conditionsFromItem(mtCore))
                 .offerTo(exporter, ic2_120_advanced_solar_addon.IC2AdvancedSolarAddon.id("ultimate_solar_panel"))
         }
