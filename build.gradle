@@ -41,10 +41,7 @@ dependencies {
     modImplementation "net.fabricmc.fabric-api:fabric-api:${project.fabric_api_version}"
     modImplementation "net.fabricmc:fabric-language-kotlin:${project.fabric_kotlin_version}"
 
-    // fabric-registry-lib
-    modImplementation "stardust:fabric-registry-lib:0.1.0"
-
-    // IC2-Fabric 本体（maven local）
+    // IC2-Fabric 本体（maven local，包含 ClassScanner 注册系统）
     modImplementation "ic2_120:ic2_120:1.0.0"
 
     // mc-compose UI库
@@ -80,6 +77,25 @@ java {
     withSourcesJar()
     sourceCompatibility = JavaVersion.VERSION_17
     targetCompatibility = JavaVersion.VERSION_17
+}
+
+// 附属 mod 运行 datagen 时，IC2 本体的 datagen 也会被拉起（Fabric Loader 限制）。
+// 运行后删除 IC2 本体生成的多余数据文件，只保留附属自己的。
+tasks.named('runDatagen') {
+    doLast {
+        def generatedDir = file('src/main/generated')
+        // 删除 IC2 本体的数据目录
+        def ic2Dir = new File(generatedDir, 'data/ic2_120')
+        if (ic2Dir.exists()) {
+            ic2Dir.deleteDir()
+            logger.lifecycle("已清理 IC2 本体 datagen 文件: {}", ic2Dir)
+        }
+        // 删除 IC2 生成的多余 minecraft 标签
+        ['mineable/axe.json', 'mineable/hoe.json'].each { f ->
+            def file = new File(generatedDir, "data/minecraft/tags/blocks/$f")
+            if (file.exists()) file.delete()
+        }
+    }
 }
 
 jar {

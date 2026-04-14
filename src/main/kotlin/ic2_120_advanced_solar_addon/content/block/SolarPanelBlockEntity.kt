@@ -21,8 +21,8 @@ import net.minecraft.text.Text
 import net.minecraft.util.math.BlockPos
 import net.minecraft.util.math.Direction
 import net.minecraft.world.World
-import stardust.fabric.registry.annotation.RegisterEnergy
-import stardust.fabric.registry.sync.SyncedData
+import ic2_120.registry.annotation.RegisterEnergy
+import ic2_120.content.syncs.SyncedData
 import net.fabricmc.fabric.api.screenhandler.v1.ExtendedScreenHandlerFactory
 
 enum class GenerationState {

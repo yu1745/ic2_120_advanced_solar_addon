@@ -39,7 +39,6 @@
     "java": ">=17",
     "fabric-api": "*",
     "fabric-language-kotlin": "*",
-    "fabric-registry-lib": "*",
     "ic2_120": "*",
     "mc-compose": "*"
   }

@@ -11,7 +11,7 @@ import net.minecraft.client.gui.screen.ingame.HandledScreen
 import net.minecraft.entity.player.PlayerInventory
 import net.minecraft.screen.slot.Slot
 import net.minecraft.text.Text
-import stardust.fabric.registry.annotation.ModScreen
+import ic2_120.registry.annotation.ModScreen
 
 @ModScreen(block = QuantumGeneratorBlock::class)
 class QuantumGeneratorScreen(

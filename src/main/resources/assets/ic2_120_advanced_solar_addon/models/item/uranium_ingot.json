@@ -1,6 +1,0 @@
-{
-  "parent": "minecraft:item/generated",
-  "textures": {
-    "layer0": "ic2_120_advanced_solar_addon:item/uranium_ingot"
-  }
-}

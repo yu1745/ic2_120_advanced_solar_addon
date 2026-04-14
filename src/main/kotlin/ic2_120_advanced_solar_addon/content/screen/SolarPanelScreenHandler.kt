@@ -9,10 +9,10 @@ import net.minecraft.screen.ScreenHandler
 import net.minecraft.screen.ScreenHandlerContext
 import net.minecraft.screen.slot.Slot
 import net.minecraft.util.math.Direction
-import stardust.fabric.registry.annotation.ModScreenHandler
-import stardust.fabric.registry.annotation.ScreenFactory
-import stardust.fabric.registry.sync.SyncedDataView
-import stardust.fabric.registry.type
+import ic2_120.registry.annotation.ModScreenHandler
+import ic2_120.registry.annotation.ScreenFactory
+import ic2_120.content.syncs.SyncedDataView
+import ic2_120.registry.type
 
 @ModScreenHandler(names = ["advanced_solar_panel", "hybrid_solar_panel", "ultimate_solar_panel", "quantum_solar_panel"])
 class SolarPanelScreenHandler(

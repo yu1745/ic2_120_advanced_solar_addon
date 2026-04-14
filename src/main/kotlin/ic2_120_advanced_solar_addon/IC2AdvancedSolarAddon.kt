@@ -3,15 +3,16 @@ package ic2_120_advanced_solar_addon
 import ic2_120_advanced_solar_addon.config.Ic2AdvancedSolarAddonConfig
 import ic2_120_advanced_solar_addon.content.command.MolecularTransformerCommand
 import ic2_120_advanced_solar_addon.content.recipe.MTRecipes
-import ic2_120_advanced_solar_addon.content.RegistryConfigurerImpl
+import ic2_120.registry.ClassScanner
 import net.fabricmc.api.ModInitializer
+import net.minecraft.util.Identifier
 import org.slf4j.LoggerFactory
-import stardust.fabric.registry.ClassScanner
-import stardust.fabric.registry.ClassScannerHolder
 
 object IC2AdvancedSolarAddon : ModInitializer {
     const val MOD_ID = "ic2_120_advanced_solar_addon"
     val LOGGER = LoggerFactory.getLogger(MOD_ID)
+
+    fun id(path: String): Identifier = Identifier(MOD_ID, path)
 
     override fun onInitialize() {
         LOGGER.info("Initializing IC2 Advanced Solar Addon...")
@@ -19,10 +20,8 @@ object IC2AdvancedSolarAddon : ModInitializer {
         // 加载配置文件
         Ic2AdvancedSolarAddonConfig.loadOrThrow()
 
-        val scanner = ClassScanner(RegistryConfigurerImpl())
-        ClassScannerHolder.instance = scanner
-
-        scanner.scanAndRegister(
+        // 使用本体 mod 的 ClassScanner 注册附属内容
+        ClassScanner.scanAndRegister(
             MOD_ID,
             listOf(
                 "ic2_120_advanced_solar_addon.content.tab",

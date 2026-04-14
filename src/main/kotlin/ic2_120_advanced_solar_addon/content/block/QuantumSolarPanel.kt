@@ -1,13 +1,25 @@
 package ic2_120_advanced_solar_addon.content.block
 
-import ic2_120_advanced_solar_addon.content.tab.SolarMachinesTab
+import ic2_120_advanced_solar_addon.content.item.QuantumCore
 import ic2_120.content.block.MachineBlock
+import ic2_120.registry.CreativeTab
+import ic2_120.registry.annotation.ModBlock
+import ic2_120.registry.annotation.ModBlockEntity
+import ic2_120.registry.annotation.RecipeProvider
+import ic2_120.registry.instance
+import ic2_120.registry.item
+import ic2_120.registry.type
+import net.fabricmc.fabric.api.datagen.v1.provider.FabricRecipeProvider.conditionsFromItem
+import net.fabricmc.fabric.api.datagen.v1.provider.FabricRecipeProvider.hasItem
 import net.minecraft.block.BlockState
 import net.minecraft.block.entity.BlockEntity
 import net.minecraft.block.entity.BlockEntityTicker
 import net.minecraft.block.entity.BlockEntityType
+import net.minecraft.data.server.recipe.RecipeJsonProvider
+import net.minecraft.data.server.recipe.ShapedRecipeJsonBuilder
 import net.minecraft.entity.player.PlayerEntity
 import net.minecraft.item.ItemPlacementContext
+import net.minecraft.recipe.book.RecipeCategory
 import net.minecraft.screen.NamedScreenHandlerFactory
 import net.minecraft.state.StateManager
 import net.minecraft.state.property.BooleanProperty
@@ -16,11 +28,12 @@ import net.minecraft.util.Hand
 import net.minecraft.util.hit.BlockHitResult
 import net.minecraft.util.math.BlockPos
 import net.minecraft.world.World
-import stardust.fabric.registry.annotation.ModBlock
-import stardust.fabric.registry.annotation.ModBlockEntity
-import stardust.fabric.registry.type
+import java.util.function.Consumer
 
-@ModBlock(name = "quantum_solar_panel", registerItem = true, tab = SolarMachinesTab::class, group = "solar_panel")
+// i18n: block.ic2_120_advanced_solar_addon.quantum_solar_panel
+// zh_cn: 量子太阳能发电机
+// en_us: Quantum Solar Panel
+@ModBlock(name = "quantum_solar_panel", registerItem = true, tab = CreativeTab.IC2_SOLAR, group = "solar_panel")
 class QuantumSolarPanelBlock : MachineBlock() {
 
     override fun createBlockEntity(pos: BlockPos, state: BlockState): BlockEntity =
@@ -65,6 +78,22 @@ class QuantumSolarPanelBlock : MachineBlock() {
 
     companion object {
         val ACTIVE: BooleanProperty = BooleanProperty.of("active")
+
+        @RecipeProvider
+        fun generateRecipes(exporter: Consumer<RecipeJsonProvider>) {
+            val ultimateSolar = UltimateSolarPanelBlock::class.item()
+            val quantumCore = QuantumCore::class.instance()
+
+            // 8个终极混合太阳能 + 1个量子核心
+            ShapedRecipeJsonBuilder.create(RecipeCategory.MISC, QuantumSolarPanelBlock::class.item(), 1)
+                .pattern("UUU")
+                .pattern("UQU")
+                .pattern("UUU")
+                .input('U', ultimateSolar)
+                .input('Q', quantumCore)
+                .criterion(hasItem(ultimateSolar), conditionsFromItem(ultimateSolar))
+                .offerTo(exporter, ic2_120_advanced_solar_addon.IC2AdvancedSolarAddon.id("quantum_solar_panel"))
+        }
     }
 }
 

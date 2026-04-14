@@ -10,8 +10,8 @@ import net.minecraft.registry.Registries
 import net.minecraft.util.Identifier
 import net.minecraft.util.math.BlockPos
 import net.minecraft.client.render.block.entity.BlockEntityRendererFactories
-import stardust.fabric.registry.ClientScreenRegistrar
-import stardust.fabric.registry.type
+import ic2_120.client.ClientScreenRegistrar
+import ic2_120.registry.type
 
 object IC2AdvancedSolarAddonClient : ClientModInitializer {
     override fun onInitializeClient() {

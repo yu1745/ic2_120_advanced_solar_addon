@@ -1,14 +1,30 @@
 package ic2_120_advanced_solar_addon.content.block
 
-import ic2_120_advanced_solar_addon.content.tab.SolarMachinesTab
+import ic2_120_advanced_solar_addon.content.item.MtCore
 import ic2_120.content.block.MachineBlock
+import ic2_120.content.block.AdvancedMachineCasingBlock
+import ic2_120.content.block.HvTransformerBlock
+import ic2_120.content.item.AdvancedCircuit
+import ic2_120.registry.CreativeTab
+import ic2_120.registry.annotation.ModBlock
+import ic2_120.registry.annotation.ModBlockEntity
+import ic2_120.registry.annotation.RecipeProvider
+import ic2_120.registry.instance
+import ic2_120.registry.item
+import ic2_120.registry.type
+import net.fabricmc.fabric.api.datagen.v1.provider.FabricRecipeProvider.conditionsFromItem
+import net.fabricmc.fabric.api.datagen.v1.provider.FabricRecipeProvider.hasItem
 import net.minecraft.block.BlockRenderType
 import net.minecraft.block.BlockState
 import net.minecraft.block.entity.BlockEntity
 import net.minecraft.block.entity.BlockEntityTicker
 import net.minecraft.block.entity.BlockEntityType
+import net.minecraft.data.server.recipe.RecipeJsonProvider
+import net.minecraft.data.server.recipe.ShapedRecipeJsonBuilder
 import net.minecraft.entity.player.PlayerEntity
 import net.minecraft.item.ItemPlacementContext
+import net.minecraft.item.Items
+import net.minecraft.recipe.book.RecipeCategory
 import net.minecraft.screen.NamedScreenHandlerFactory
 import net.minecraft.state.StateManager
 import net.minecraft.state.property.BooleanProperty
@@ -20,10 +36,12 @@ import net.minecraft.util.shape.VoxelShape
 import net.minecraft.util.shape.VoxelShapes
 import net.minecraft.world.BlockView
 import net.minecraft.world.World
-import stardust.fabric.registry.annotation.ModBlock
-import stardust.fabric.registry.type
+import java.util.function.Consumer
 
-@ModBlock(name = "molecular_transformer", registerItem = true, tab = SolarMachinesTab::class, group = "machine")
+// i18n: block.ic2_120_advanced_solar_addon.molecular_transformer
+// zh_cn: 分子重组仪
+// en_us: Molecular Transformer
+@ModBlock(name = "molecular_transformer", registerItem = true, tab = CreativeTab.IC2_SOLAR, group = "machine")
 class MolecularTransformerBlock : MachineBlock() {
 
     companion object {
@@ -31,6 +49,24 @@ class MolecularTransformerBlock : MachineBlock() {
         const val OUTPUT_SLOT = 1
         const val INVENTORY_SIZE = 2
         val ACTIVE: BooleanProperty = BooleanProperty.of("active")
+
+        @RecipeProvider
+        fun generateRecipes(exporter: Consumer<RecipeJsonProvider>) {
+            val mtCore = MtCore::class.instance()
+            val casing = AdvancedMachineCasingBlock::class.item()
+            val transformer = HvTransformerBlock::class.item()
+            val circuit = AdvancedCircuit::class.instance()
+
+            ShapedRecipeJsonBuilder.create(RecipeCategory.MISC, MolecularTransformerBlock::class.item(), 1)
+                .pattern("CTC")
+                .pattern("CMC")
+                .pattern("CTC")
+                .input('C', casing)
+                .input('T', transformer)
+                .input('M', mtCore)
+                .criterion(hasItem(circuit), conditionsFromItem(circuit))
+                .offerTo(exporter, ic2_120_advanced_solar_addon.IC2AdvancedSolarAddon.id("molecular_transformer"))
+        }
     }
 
     override fun createBlockEntity(pos: BlockPos, state: BlockState): BlockEntity =

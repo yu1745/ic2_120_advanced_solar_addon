@@ -22,10 +22,10 @@ import net.minecraft.text.Text
 import net.minecraft.util.math.BlockPos
 import net.minecraft.util.math.Direction
 import net.minecraft.world.World
-import stardust.fabric.registry.annotation.ModBlockEntity
-import stardust.fabric.registry.annotation.RegisterEnergy
-import stardust.fabric.registry.sync.SyncedData
-import stardust.fabric.registry.type
+import ic2_120.registry.annotation.ModBlockEntity
+import ic2_120.registry.annotation.RegisterEnergy
+import ic2_120.content.syncs.SyncedData
+import ic2_120.registry.type
 import net.fabricmc.fabric.api.screenhandler.v1.ExtendedScreenHandlerFactory
 
 @ModBlockEntity(block = QuantumGeneratorBlock::class)

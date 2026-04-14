@@ -1,7 +1,9 @@
 package ic2_120_advanced_solar_addon.content.block
 
-import ic2_120_advanced_solar_addon.content.tab.SolarMachinesTab
 import ic2_120.content.block.MachineBlock
+import ic2_120.registry.CreativeTab
+import ic2_120.registry.annotation.ModBlock
+import ic2_120.registry.type
 import net.minecraft.block.BlockState
 import net.minecraft.block.entity.BlockEntity
 import net.minecraft.block.entity.BlockEntityTicker
@@ -16,10 +18,11 @@ import net.minecraft.util.Hand
 import net.minecraft.util.hit.BlockHitResult
 import net.minecraft.util.math.BlockPos
 import net.minecraft.world.World
-import stardust.fabric.registry.annotation.ModBlock
-import stardust.fabric.registry.type
 
-@ModBlock(name = "quantum_generator", registerItem = true, tab = SolarMachinesTab::class, group = "machine")
+// i18n: block.ic2_120_advanced_solar_addon.quantum_generator
+// zh_cn: 量子发电机
+// en_us: Quantum Generator
+@ModBlock(name = "quantum_generator", registerItem = true, tab = CreativeTab.IC2_SOLAR, group = "machine")
 class QuantumGeneratorBlock : MachineBlock() {
 
     override fun createBlockEntity(pos: BlockPos, state: BlockState): BlockEntity =
