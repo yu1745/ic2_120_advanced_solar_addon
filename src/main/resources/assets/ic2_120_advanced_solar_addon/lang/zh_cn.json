@@ -31,6 +31,15 @@
   "gui.ic2_120_advanced_solar_addon.max": "MAX",
   "gui.ic2_120_advanced_solar_addon.storage": "存储",
   "gui.ic2_120_advanced_solar_addon.generating": "产生：",
+  "gui.ic2_120_advanced_solar_addon.status": "状态",
+  "gui.ic2_120_advanced_solar_addon.day": "白天",
+  "gui.ic2_120_advanced_solar_addon.night": "夜晚",
+  "gui.ic2_120_advanced_solar_addon.solar_state.none": "无",
+  "gui.ic2_120_advanced_solar_addon.solar_state.night": "夜晚 (%s EU/t)",
+  "gui.ic2_120_advanced_solar_addon.solar_state.day": "白天 (%s EU/t)",
+  "gui.ic2_120_advanced_solar_addon.solar_state.unknown": "未知",
+  "gui.ic2_120_advanced_solar_addon.qg_status.active": "运行中",
+  "gui.ic2_120_advanced_solar_addon.qg_status.disabled": "禁用（红石信号）",
 
-  "itemGroup.ic2_120_advanced_solar_addon": "IC2高级太阳能附属"
+  "itemGroup.ic2_120_advanced_solar_addon.ic2_solar": "IC2高级太阳能附属"
 }

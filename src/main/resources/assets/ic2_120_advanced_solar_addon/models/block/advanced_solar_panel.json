@@ -1,12 +1,12 @@
 {
-	"parent": "block/cube",
-	"textures": {
-		"particle": "advanced_solar_panels:blocks/Advanced Solar Side",
-		"down": "advanced_solar_panels:blocks/Advanced Solar Bottom",
-		"up": "advanced_solar_panels:blocks/Advanced Solar Top",
-		"north": "advanced_solar_panels:blocks/Advanced Solar Side",
-		"east": "advanced_solar_panels:blocks/Advanced Solar Side",
-		"south": "advanced_solar_panels:blocks/Advanced Solar Side",
-		"west": "advanced_solar_panels:blocks/Advanced Solar Side"
-	}
+  "parent": "minecraft:block/cube",
+  "textures": {
+    "particle": "ic2_120_advanced_solar_addon:block/advanced_solar_side",
+    "down": "ic2_120_advanced_solar_addon:block/advanced_solar_bottom",
+    "up": "ic2_120_advanced_solar_addon:block/advanced_solar_top",
+    "north": "ic2_120_advanced_solar_addon:block/advanced_solar_side",
+    "east": "ic2_120_advanced_solar_addon:block/advanced_solar_side",
+    "south": "ic2_120_advanced_solar_addon:block/advanced_solar_side",
+    "west": "ic2_120_advanced_solar_addon:block/advanced_solar_side"
+  }
 }

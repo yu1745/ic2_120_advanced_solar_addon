@@ -1,136 +1,157 @@
 package ic2_120_advanced_solar_addon.content.block
 
+import ic2_120_advanced_solar_addon.content.sync.SolarPanelSync
+import ic2_120_advanced_solar_addon.content.screen.SolarPanelScreenHandler
+import ic2_120.content.block.IGenerator
+import ic2_120.content.block.ITieredMachine
+import ic2_120.content.block.machines.MachineBlockEntity
 import net.minecraft.block.BlockState
 import net.minecraft.block.entity.BlockEntity
-import net.minecraft.block.entity.BlockEntityType
+import net.minecraft.entity.player.PlayerEntity
+import net.minecraft.entity.player.PlayerInventory
+import net.minecraft.inventory.Inventory
 import net.minecraft.nbt.NbtCompound
+import net.minecraft.network.PacketByteBuf
+import net.minecraft.screen.ScreenHandler
+import net.minecraft.screen.ScreenHandlerContext
+import net.minecraft.server.network.ServerPlayerEntity
+import net.minecraft.state.property.BooleanProperty
+import net.minecraft.state.property.Properties
+import net.minecraft.text.Text
 import net.minecraft.util.math.BlockPos
 import net.minecraft.util.math.Direction
 import net.minecraft.world.World
-import team.reborn.energy.api.EnergyStorage
-import team.reborn.energy.api.base.SimpleEnergyStorage
+import stardust.fabric.registry.annotation.RegisterEnergy
+import stardust.fabric.registry.sync.SyncedData
+import net.fabricmc.fabric.api.screenhandler.v1.ExtendedScreenHandlerFactory
 
 enum class GenerationState {
     NONE, NIGHT, DAY
 }
 
 abstract class SolarPanelBlockEntity(
-    type: BlockEntityType<out SolarPanelBlockEntity>,
+    type: net.minecraft.block.entity.BlockEntityType<out SolarPanelBlockEntity>,
     pos: BlockPos,
     state: BlockState,
     val dayPower: Int,
     val nightPower: Int,
     maxStorage: Long,
-    val tier: Int
-) : BlockEntity(type, pos, state), EnergyStorage {
-    
-    val energyStorage = object : SimpleEnergyStorage(maxStorage, 0, Long.MAX_VALUE) {
-        override fun onFinalCommit() {
-            markDirty()
-        }
-    }
-    
+    override val tier: Int,
+    activeProperty: BooleanProperty
+) : MachineBlockEntity(type, pos, state), IGenerator, ExtendedScreenHandlerFactory {
+
+    @Suppress("unused")
+    val syncedData = SyncedData(this)
+
+    @RegisterEnergy
+    val sync = SolarPanelSync(
+        schema = syncedData,
+        capacity = maxStorage,
+        tier = tier,
+        getFacing = { world?.getBlockState(pos)?.get(Properties.HORIZONTAL_FACING) ?: Direction.NORTH },
+        currentTickProvider = { world?.time }
+    )
+
+    val maxStorage: Long = maxStorage
+
+    override val activeProperty: BooleanProperty = activeProperty
+
     var generationState: GenerationState = GenerationState.NONE
+        private set
     private var ticker: Int = 0
     private val tickRate: Int = 128
-    
-    override fun insert(maxAmount: Long, transaction: net.fabricmc.fabric.api.transfer.v1.transaction.TransactionContext?): Long {
-        return 0 // 太阳能板不接受能量输入
-    }
-    
-    override fun extract(maxAmount: Long, transaction: net.fabricmc.fabric.api.transfer.v1.transaction.TransactionContext?): Long {
-        return energyStorage.extract(maxAmount, transaction)
-    }
-    
-    override fun getAmount(): Long = energyStorage.amount
-    override fun getCapacity(): Long = energyStorage.capacity
-    
-    fun tick() {
-        if (world?.isClient == true) return
-        
+
+    override fun getInventory(): Inventory? = null
+
+    fun tick(world: World, pos: BlockPos, state: BlockState) {
+        if (world.isClient) return
+
         if (ticker++ % tickRate == 0) {
             checkSky()
         }
-        
-        // 发电
+
+        val canGenerate = generationState != GenerationState.NONE
         when (generationState) {
-            GenerationState.DAY -> tryGenerateEnergy(dayPower)
-            GenerationState.NIGHT -> tryGenerateEnergy(nightPower)
+            GenerationState.DAY -> sync.generateEnergy(dayPower.toLong())
+            GenerationState.NIGHT -> sync.generateEnergy(nightPower.toLong())
             GenerationState.NONE -> {}
         }
-        
-        // 输出能量到相邻的能量接收器
-        outputEnergy()
+
+        sync.isGenerating = if (canGenerate) 1 else 0
+        sync.generationState = generationState.ordinal
+        sync.dayPower = dayPower
+        sync.nightPower = nightPower
+        sync.energy = sync.amount.toInt().coerceIn(0, Int.MAX_VALUE)
+
+        sync.syncCurrentTickFlow()
+
+        setActiveState(world, pos, state, canGenerate)
+        markDirty()
     }
-    
+
     private fun checkSky() {
         val world = this.world ?: return
         val pos = this.pos
-        
-        if (!world.isSkyVisible(pos.up())) {
+
+        // 检查正上方是否有天空可见（无非透明方块遮挡）
+        if (!hasSkyAccess(world, pos)) {
             generationState = GenerationState.NONE
             return
         }
-        
+
         val isDay = world.isDay
         val isRaining = world.isRaining || world.isThundering
         val canRain = world.getBiome(pos).value().hasPrecipitation()
-        
+
         generationState = when {
             isDay && (!canRain || !isRaining) -> GenerationState.DAY
             !isDay -> GenerationState.NIGHT
             else -> GenerationState.NONE
         }
-        
+
         markDirty()
     }
-    
-    private fun tryGenerateEnergy(amount: Int) {
-        val inserted = energyStorage.amount + amount
-        energyStorage.amount = minOf(inserted, energyStorage.capacity)
-        markDirty()
-    }
-    
-    private fun outputEnergy() {
-        if (energyStorage.amount <= 0) return
-        
-        val world = this.world ?: return
-        
-        // 向四周输出能量
-        for (direction in Direction.values()) {
-            if (energyStorage.amount <= 0) break
-            
-            val neighborPos = pos.offset(direction)
-            val targetStorage = EnergyStorage.SIDED.find(world, neighborPos, direction.opposite)
-            if (targetStorage != null && targetStorage.supportsInsertion()) {
-                val maxOutput = minOf(energyStorage.amount, getTierPower())
-                val extracted = energyStorage.extract(maxOutput, null)
-                val remainder = targetStorage.insert(extracted, null)
-                energyStorage.amount += remainder // 退回未插入的部分
-            }
+
+    /**
+     * 检查正上方是否有天空可见（无非透明方块遮挡）。
+     * 参考 ic2-fabric 的 SolarGeneratorBlockEntity 实现。
+     */
+    private fun hasSkyAccess(world: World, basePos: BlockPos): Boolean {
+        val topY = world.topY
+        var y = basePos.y + 1
+        while (y < topY) {
+            val pos = BlockPos(basePos.x, y, basePos.z)
+            val blockState = world.getBlockState(pos)
+            if (blockState.isOpaqueFullCube(world, pos)) return false
+            y++
         }
+        return true
     }
-    
-    private fun getTierPower(): Long {
-        return when (tier) {
-            1 -> 32L
-            2 -> 128L
-            3 -> 512L
-            4 -> 2048L
-            5 -> 8192L
-            else -> 32L
-        }
+
+    // ExtendedScreenHandlerFactory
+    override fun getDisplayName(): Text = Text.translatable("block.ic2_120_advanced_solar_addon.${getBlockName()}")
+
+    override fun createMenu(syncId: Int, playerInventory: PlayerInventory, player: PlayerEntity?): ScreenHandler =
+        SolarPanelScreenHandler(syncId, playerInventory, ScreenHandlerContext.create(world!!, pos), syncedData)
+
+    override fun writeScreenOpeningData(player: ServerPlayerEntity, buf: PacketByteBuf) {
+        buf.writeBlockPos(pos)
+        buf.writeVarInt(syncedData.size())
     }
-    
+
+    protected open fun getBlockName(): String = "advanced_solar_panel"
+
     override fun readNbt(nbt: NbtCompound) {
         super.readNbt(nbt)
-        energyStorage.amount = nbt.getLong("energy")
-        generationState = GenerationState.values()[nbt.getInt("state")]
+        sync.restoreEnergy(nbt.getLong(SolarPanelSync.NBT_ENERGY).coerceIn(0L, sync.capacity))
+        generationState = GenerationState.values()[nbt.getInt("state").coerceIn(0, 2)]
+        syncedData.readNbt(nbt)
     }
-    
+
     override fun writeNbt(nbt: NbtCompound) {
         super.writeNbt(nbt)
-        nbt.putLong("energy", energyStorage.amount)
+        nbt.putLong(SolarPanelSync.NBT_ENERGY, sync.amount)
         nbt.putInt("state", generationState.ordinal)
+        syncedData.writeNbt(nbt)
     }
 }

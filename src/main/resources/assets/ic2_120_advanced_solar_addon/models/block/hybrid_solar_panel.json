@@ -1,12 +1,12 @@
 {
-	"parent": "block/cube",
-	"textures": {
-		"particle": "advanced_solar_panels:blocks/Hybrid Solar Side",
-		"down": "advanced_solar_panels:blocks/Hybrid Solar Bottom",
-		"up": "advanced_solar_panels:blocks/Hybrid Solar Top",
-		"north": "advanced_solar_panels:blocks/Hybrid Solar Side",
-		"east": "advanced_solar_panels:blocks/Hybrid Solar Side",
-		"south": "advanced_solar_panels:blocks/Hybrid Solar Side",
-		"west": "advanced_solar_panels:blocks/Hybrid Solar Side"
-	}
+  "parent": "minecraft:block/cube",
+  "textures": {
+    "particle": "ic2_120_advanced_solar_addon:block/hybrid_solar_side",
+    "down": "ic2_120_advanced_solar_addon:block/hybrid_solar_bottom",
+    "up": "ic2_120_advanced_solar_addon:block/hybrid_solar_top",
+    "north": "ic2_120_advanced_solar_addon:block/hybrid_solar_side",
+    "east": "ic2_120_advanced_solar_addon:block/hybrid_solar_side",
+    "south": "ic2_120_advanced_solar_addon:block/hybrid_solar_side",
+    "west": "ic2_120_advanced_solar_addon:block/hybrid_solar_side"
+  }
 }

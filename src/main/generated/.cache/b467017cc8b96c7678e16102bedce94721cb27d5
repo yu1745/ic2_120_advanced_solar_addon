@@ -1,0 +1,4 @@
+// 1.20.1	2026-04-14T11:48:51.975971921	IC2 Advanced Solar Addon/Tags for minecraft:block
+8a23702b05296c8af5014d6aa6e9265ded85c7d9 data/minecraft/tags/blocks/needs_stone_tool.json
+7fe9e09665b0b539b6b5b72ded21e558bff6a5bc data/minecraft/tags/blocks/needs_iron_tool.json
+7fe9e09665b0b539b6b5b72ded21e558bff6a5bc data/minecraft/tags/blocks/mineable/pickaxe.json

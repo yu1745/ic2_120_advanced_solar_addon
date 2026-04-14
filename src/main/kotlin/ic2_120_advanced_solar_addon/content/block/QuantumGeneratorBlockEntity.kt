@@ -1,102 +1,118 @@
 package ic2_120_advanced_solar_addon.content.block
 
+import ic2_120_advanced_solar_addon.content.sync.QuantumGeneratorSync
+import ic2_120_advanced_solar_addon.content.screen.QuantumGeneratorScreenHandler
+import ic2_120.content.block.IGenerator
+import ic2_120.content.block.ITieredMachine
+import ic2_120.content.block.machines.MachineBlockEntity
+import ic2_120.content.energy.EnergyTier
 import net.minecraft.block.BlockState
 import net.minecraft.block.entity.BlockEntity
 import net.minecraft.block.entity.BlockEntityType
+import net.minecraft.entity.player.PlayerEntity
+import net.minecraft.entity.player.PlayerInventory
+import net.minecraft.inventory.Inventory
 import net.minecraft.nbt.NbtCompound
+import net.minecraft.network.PacketByteBuf
+import net.minecraft.screen.ScreenHandler
+import net.minecraft.screen.ScreenHandlerContext
+import net.minecraft.server.network.ServerPlayerEntity
+import net.minecraft.state.property.Properties
+import net.minecraft.text.Text
 import net.minecraft.util.math.BlockPos
 import net.minecraft.util.math.Direction
 import net.minecraft.world.World
-import team.reborn.energy.api.EnergyStorage
+import stardust.fabric.registry.annotation.ModBlockEntity
+import stardust.fabric.registry.annotation.RegisterEnergy
+import stardust.fabric.registry.sync.SyncedData
+import stardust.fabric.registry.type
+import net.fabricmc.fabric.api.screenhandler.v1.ExtendedScreenHandlerFactory
 
+@ModBlockEntity(block = QuantumGeneratorBlock::class)
 class QuantumGeneratorBlockEntity(
     pos: BlockPos,
     state: BlockState
-) : BlockEntity(ModBlocks.QUANTUM_GENERATOR_ENTITY, pos, state), EnergyStorage {
-    
-    var production: Int = 512
-    var tier: Int = 3
-    var isActive: Boolean = true
-    
-    // 量子发电机不存储能量，直接输出
-    override fun insert(maxAmount: Long, transaction: net.fabricmc.fabric.api.transfer.v1.transaction.TransactionContext?): Long = 0
-    override fun extract(maxAmount: Long, transaction: net.fabricmc.fabric.api.transfer.v1.transaction.TransactionContext?): Long {
-        return if (isActive) minOf(maxAmount, getTierPower()) else 0
+) : MachineBlockEntity(QuantumGeneratorBlockEntity::class.type(), pos, state),
+    IGenerator, ExtendedScreenHandlerFactory {
+
+    companion object {
+        const val GENERATOR_TIER = 3
+        const val PRODUCTION = 512
     }
-    override fun getAmount(): Long = 0
-    override fun getCapacity(): Long = 0
-    
-    fun tick() {
-        if (world?.isClient == true) return
-        if (!isActive) return
-        
-        // 检查红石信号
-        val world = this.world ?: return
+
+    override val tier: Int = GENERATOR_TIER
+    override val activeProperty = QuantumGeneratorBlock.ACTIVE
+
+    @Suppress("unused")
+    val syncedData = SyncedData(this)
+
+    @RegisterEnergy
+    val sync = QuantumGeneratorSync(
+        schema = syncedData,
+        tier = tier,
+        getFacing = { world?.getBlockState(pos)?.get(Properties.HORIZONTAL_FACING) ?: Direction.NORTH },
+        currentTickProvider = { world?.time }
+    )
+
+    var production: Int = PRODUCTION
+        private set
+
+    private var isActive: Boolean = true
+        private set
+
+    override fun getInventory(): Inventory? = null
+
+    fun tick(world: World, pos: BlockPos, state: BlockState) {
+        if (world.isClient) return
+
         var hasRedstoneSignal = false
-        for (direction in Direction.values()) {
+        for (direction in Direction.entries) {
             if (world.getEmittedRedstonePower(pos.offset(direction), direction) > 0) {
                 hasRedstoneSignal = true
                 break
             }
         }
-        if (hasRedstoneSignal) return
-        
-        // 输出能量到相邻的方块
-        outputEnergy()
-    }
-    
-    private fun outputEnergy() {
-        val world = this.world ?: return
-        
-        var remainingOutput = production.toLong()
-        
-        for (direction in Direction.values()) {
-            if (remainingOutput <= 0) break
-            
-            val neighborPos = pos.offset(direction)
-            val targetStorage = EnergyStorage.SIDED.find(world, neighborPos, direction.opposite)
-            if (targetStorage != null && targetStorage.supportsInsertion()) {
-                val packetSize = getTierPower()
-                val toOutput = minOf(remainingOutput, packetSize)
-                val accepted = targetStorage.insert(toOutput, null)
-                remainingOutput -= accepted
-            }
+
+        isActive = !hasRedstoneSignal
+
+        if (isActive) {
+            sync.generateEnergy(production.toLong())
         }
-    }
-    
-    private fun getTierPower(): Long {
-        return when (tier) {
-            1 -> 32L
-            2 -> 128L
-            3 -> 512L
-            4 -> 2048L
-            5 -> 8192L
-            6 -> 32000L
-            else -> 512L
-        }
-    }
-    
-    fun changeProduction(delta: Int) {
-        production = (production + delta).coerceAtLeast(0)
+
+        sync.production = production
+        sync.tierLevel = tier
+        sync.isActive = if (isActive) 1 else 0
+        sync.energy = sync.amount.toInt().coerceIn(0, Int.MAX_VALUE)
+
+        sync.syncCurrentTickFlow()
+        setActiveState(world, pos, state, isActive)
         markDirty()
     }
-    
-    fun setTierLevel(newTier: Int) {
-        tier = newTier.coerceIn(1, 6)
-        markDirty()
+
+    // ExtendedScreenHandlerFactory
+    override fun getDisplayName(): Text = Text.translatable("block.ic2_120_advanced_solar_addon.quantum_generator")
+
+    override fun createMenu(syncId: Int, playerInventory: PlayerInventory, player: PlayerEntity?): ScreenHandler =
+        QuantumGeneratorScreenHandler(syncId, playerInventory, ScreenHandlerContext.create(world!!, pos), syncedData)
+
+    override fun writeScreenOpeningData(player: ServerPlayerEntity, buf: PacketByteBuf) {
+        buf.writeBlockPos(pos)
+        buf.writeVarInt(syncedData.size())
     }
-    
+
     override fun readNbt(nbt: NbtCompound) {
         super.readNbt(nbt)
         production = nbt.getInt("production")
-        tier = nbt.getInt("tier")
         isActive = nbt.getBoolean("active")
+        sync.restoreEnergy(nbt.getLong(QuantumGeneratorSync.NBT_ENERGY).coerceIn(0L, sync.capacity))
+        syncedData.readNbt(nbt)
     }
-    
+
     override fun writeNbt(nbt: NbtCompound) {
         super.writeNbt(nbt)
         nbt.putInt("production", production)
-        nbt.putInt("tier", tier)
         nbt.putBoolean("active", isActive)
+        nbt.putLong(QuantumGeneratorSync.NBT_ENERGY, sync.amount)
+        syncedData.writeNbt(nbt)
     }
 }

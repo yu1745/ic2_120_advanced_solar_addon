@@ -1,53 +1,48 @@
 package ic2_120_advanced_solar_addon.content.item
 
-import ic2_120_advanced_solar_addon.IC2AdvancedSolarAddon
+import ic2_120_advanced_solar_addon.content.tab.SolarMachinesTab
 import net.fabricmc.fabric.api.item.v1.FabricItemSettings
-import net.fabricmc.fabric.api.itemgroup.v1.ItemGroupEvents
 import net.minecraft.item.Item
-import net.minecraft.item.ItemGroups
-import net.minecraft.registry.Registries
-import net.minecraft.registry.Registry
-import net.minecraft.util.Identifier
+import stardust.fabric.registry.annotation.ModItem
 
-object ModItems {
-    // 物品实例
-    val SUNNARIUM = register("sunnarium", Item(FabricItemSettings()))
-    val SUNNARIUM_PART = register("sunnarium_part", Item(FabricItemSettings()))
-    val SUNNARIUM_ALLOY = register("sunnarium_alloy", Item(FabricItemSettings()))
-    val IRRADIANT_URANIUM = register("irradiant_uranium", Item(FabricItemSettings()))
-    val ENRICHED_SUNNARIUM = register("enriched_sunnarium", Item(FabricItemSettings()))
-    val ENRICHED_SUNNARIUM_ALLOY = register("enriched_sunnarium_alloy", Item(FabricItemSettings()))
-    val IRRADIANT_GLASS_PANE = register("irradiant_glass_pane", Item(FabricItemSettings()))
-    val IRIDIUM_IRON_PLATE = register("iridium_iron_plate", Item(FabricItemSettings()))
-    val REINFORCED_IRIDIUM_IRON_PLATE = register("reinforced_iridium_iron_plate", Item(FabricItemSettings()))
-    val IRRADIANT_REINFORCED_PLATE = register("irradiant_reinforced_plate", Item(FabricItemSettings()))
-    val IRIDIUM_INGOT = register("iridium_ingot", Item(FabricItemSettings()))
-    val URANIUM_INGOT = register("uranium_ingot", Item(FabricItemSettings()))
-    val MT_CORE = register("mt_core", Item(FabricItemSettings()))
-    val QUANTUM_CORE = register("quantum_core", Item(FabricItemSettings()))
+@ModItem(name = "sunnarium", tab = SolarMachinesTab::class, group = "material")
+class Sunnarium : Item(FabricItemSettings())
 
-    private fun register(name: String, item: Item): Item {
-        val id = Identifier(IC2AdvancedSolarAddon.MOD_ID, name)
-        return Registry.register(Registries.ITEM, id, item)
-    }
+@ModItem(name = "sunnarium_part", tab = SolarMachinesTab::class, group = "material")
+class SunnariumPart : Item(FabricItemSettings())
 
-    fun init() {
-        // 注册到物品栏
-        ItemGroupEvents.modifyEntriesEvent(ItemGroups.INGREDIENTS).register { entries ->
-            entries.add(SUNNARIUM)
-            entries.add(SUNNARIUM_PART)
-            entries.add(SUNNARIUM_ALLOY)
-            entries.add(IRRADIANT_URANIUM)
-            entries.add(ENRICHED_SUNNARIUM)
-            entries.add(ENRICHED_SUNNARIUM_ALLOY)
-            entries.add(IRRADIANT_GLASS_PANE)
-            entries.add(IRIDIUM_IRON_PLATE)
-            entries.add(REINFORCED_IRIDIUM_IRON_PLATE)
-            entries.add(IRRADIANT_REINFORCED_PLATE)
-            entries.add(IRIDIUM_INGOT)
-            entries.add(URANIUM_INGOT)
-            entries.add(MT_CORE)
-            entries.add(QUANTUM_CORE)
-        }
-    }
-}
+@ModItem(name = "sunnarium_alloy", tab = SolarMachinesTab::class, group = "material")
+class SunnariumAlloy : Item(FabricItemSettings())
+
+@ModItem(name = "irradiant_uranium", tab = SolarMachinesTab::class, group = "material")
+class IrradiantUranium : Item(FabricItemSettings())
+
+@ModItem(name = "enriched_sunnarium", tab = SolarMachinesTab::class, group = "material")
+class EnrichedSunnarium : Item(FabricItemSettings())
+
+@ModItem(name = "enriched_sunnarium_alloy", tab = SolarMachinesTab::class, group = "material")
+class EnrichedSunnariumAlloy : Item(FabricItemSettings())
+
+@ModItem(name = "irradiant_glass_pane", tab = SolarMachinesTab::class, group = "material")
+class IrradiantGlassPane : Item(FabricItemSettings())
+
+@ModItem(name = "iridium_iron_plate", tab = SolarMachinesTab::class, group = "material")
+class IridiumIronPlate : Item(FabricItemSettings())
+
+@ModItem(name = "reinforced_iridium_iron_plate", tab = SolarMachinesTab::class, group = "material")
+class ReinforcedIridiumIronPlate : Item(FabricItemSettings())
+
+@ModItem(name = "irradiant_reinforced_plate", tab = SolarMachinesTab::class, group = "material")
+class IrradiantReinforcedPlate : Item(FabricItemSettings())
+
+@ModItem(name = "iridium_ingot", tab = SolarMachinesTab::class, group = "material")
+class IridiumIngot : Item(FabricItemSettings())
+
+@ModItem(name = "uranium_ingot", tab = SolarMachinesTab::class, group = "material")
+class UraniumIngot : Item(FabricItemSettings())
+
+@ModItem(name = "mt_core", tab = SolarMachinesTab::class, group = "component")
+class MtCore : Item(FabricItemSettings())
+
+@ModItem(name = "quantum_core", tab = SolarMachinesTab::class, group = "component")
+class QuantumCore : Item(FabricItemSettings())
