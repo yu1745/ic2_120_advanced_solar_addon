@@ -46,19 +46,19 @@ private val defaultRecipes = listOf(
     MolecularTransformerRecipeConfig(
         input = "ic2_120_advanced_solar_addon:fluorite",
         output = "ic2_120_advanced_solar_addon:sunnarium",
-        energy = 900000000
+        energy = 9000000
     ),
     // 萤石粉 -> 小块阳光化合物，100W EU
     MolecularTransformerRecipeConfig(
         input = "ic2_120_advanced_solar_addon:fluorite_dust",
         output = "ic2_120_advanced_solar_addon:sunnarium_part",
-        energy = 100000000
+        energy = 1000000
     ),
     // 铁锭 -> 铱锭，900W EU
     MolecularTransformerRecipeConfig(
         input = "minecraft:iron_ingot",
         output = "ic2_120_advanced_solar_addon:iridium_ingot",
-        energy = 900000000
+        energy = 9000000
     )
 )
 
