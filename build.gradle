@@ -51,7 +51,7 @@ dependencies {
     modImplementation files("../ic2-fabric/build/libs/ic2_120-1.0.0.jar")
 
     // mc-compose UI库
-    modImplementation "mc_compose:mc-compose:0.1.0"
+    modImplementation files("../mc-compose/build/libs/mc-compose-0.1.0.jar")
 
         // TeamReborn Energy API
     modImplementation "teamreborn:energy:${project.energy_api_version}"
