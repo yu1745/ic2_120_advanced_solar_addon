@@ -12,6 +12,10 @@ jobs:
     steps:
       - name: checkout repository
         uses: actions/checkout@v4
+      - name: clone ic2-fabric dependency
+        run: git clone https://github.com/yu1745/ic2-fabric.git ../ic2-fabric --depth 1
+      - name: clone mc-compose dependency
+        run: git clone https://github.com/yu1745/mc-compose.git ../mc-compose --depth 1
       - name: validate gradle wrapper
         uses: gradle/actions/wrapper-validation@v4
       - name: setup jdk
@@ -20,7 +24,14 @@ jobs:
           java-version: '25'
           distribution: 'microsoft'
       - name: make gradle wrapper executable
-        run: chmod +x ./gradlew
+        run: |
+          chmod +x ./gradlew
+          chmod +x ../ic2-fabric/gradlew
+          chmod +x ../mc-compose/gradlew
+      - name: build ic2-fabric dependency
+        run: cd ../ic2-fabric && ./gradlew build
+      - name: build mc-compose dependency
+        run: cd ../mc-compose && ./gradlew build
       - name: build
         run: ./gradlew build
       - name: capture build artifacts
