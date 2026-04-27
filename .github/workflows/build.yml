@@ -51,12 +51,12 @@ jobs:
         run: |
           mkdir -p mod-release
           for f in build-output/ic2_120_advanced_solar_addon-*.jar; do
-            [[ "$f" != *-sources* && "$f" != *-remapped* ]] && cp "$f" mod-release/
+            [[ "$f" != *-sources* && "$f" != *-remapped* ]] && cp "$f" "mod-release/$(basename "$f" .jar)-mc1.20.1.jar"
           done
       - name: create release
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: release-${{ github.run_number }}
+          tag_name: release-1.20.1-${{ github.run_number }}
           files: mod-release/*.jar
           generate_release_notes: true
         env:
