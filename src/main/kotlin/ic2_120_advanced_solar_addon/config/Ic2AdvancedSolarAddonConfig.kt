@@ -216,7 +216,7 @@ object Ic2AdvancedSolarAddonConfig {
                     !Map::class.java.isAssignableFrom(field.type)
 
             if (isNestedConfigObject) {
-                result.set<JsonNode>(fieldName, buildCommentedObject(fieldValue!!, valueElement as ObjectNode))
+                result.set<JsonNode>(fieldName, buildCommentedObject(fieldValue, valueElement as ObjectNode))
             } else {
                 result.set<JsonNode>(fieldName, valueElement)
             }
