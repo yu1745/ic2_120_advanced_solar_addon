@@ -1,25 +1,24 @@
 package ic2_120_advanced_solar_addon.config
 
+import com.fasterxml.jackson.databind.DeserializationFeature
+import com.fasterxml.jackson.databind.JsonNode
+import com.fasterxml.jackson.databind.ObjectMapper
+import com.fasterxml.jackson.databind.SerializationFeature
+import com.fasterxml.jackson.databind.node.ObjectNode
+import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
+import com.fasterxml.jackson.module.kotlin.readValue
 import ic2_120_advanced_solar_addon.IC2AdvancedSolarAddon
-import kotlinx.serialization.Serializable
-import kotlinx.serialization.json.Json
-import kotlinx.serialization.json.JsonElement
-import kotlinx.serialization.json.JsonObject
-import kotlinx.serialization.json.JsonPrimitive
-import kotlinx.serialization.json.buildJsonObject
-import kotlinx.serialization.json.jsonObject
+import net.fabricmc.loader.api.FabricLoader
+import org.slf4j.LoggerFactory
+import java.lang.reflect.Modifier
 import java.nio.charset.StandardCharsets
 import java.nio.file.Files
 import java.nio.file.Path
-import java.lang.reflect.Modifier
-import net.fabricmc.loader.api.FabricLoader
-import org.slf4j.LoggerFactory
 
 @Target(AnnotationTarget.FIELD)
 @Retention(AnnotationRetention.RUNTIME)
 annotation class ConfigComment(val value: String, val defaultValue: String = "")
 
-@Serializable
 data class MolecularTransformerRecipeConfig(
     @field:ConfigComment("输入物品 ID，例如 minecraft:iron_ingot", "")
     val input: String = "",
@@ -29,32 +28,27 @@ data class MolecularTransformerRecipeConfig(
     val energy: Long = 0
 )
 
-@Serializable
 data class Ic2AdvancedSolarAddonMainConfig(
     @field:ConfigComment("分子重组仪配方配置。")
     val molecularTransformer: MolecularTransformerConfig = MolecularTransformerConfig()
 )
 
-@Serializable
 data class MolecularTransformerConfig(
     @field:ConfigComment("分子重组仪配方列表。")
     val recipes: List<MolecularTransformerRecipeConfig> = defaultRecipes
 )
 
 private val defaultRecipes = listOf(
-    // 萤石 -> 阳光化合物，900W EU
     MolecularTransformerRecipeConfig(
         input = "ic2_120_advanced_solar_addon:fluorite",
         output = "ic2_120_advanced_solar_addon:sunnarium",
         energy = 9000000
     ),
-    // 萤石粉 -> 小块阳光化合物，100W EU
     MolecularTransformerRecipeConfig(
         input = "ic2_120_advanced_solar_addon:fluorite_dust",
         output = "ic2_120_advanced_solar_addon:sunnarium_part",
         energy = 1000000
     ),
-    // 铁锭 -> 铱锭，900W EU
     MolecularTransformerRecipeConfig(
         input = "minecraft:iron_ingot",
         output = "ic2_120_advanced_solar_addon:iridium_ingot",
@@ -66,11 +60,9 @@ private val DEFAULT_CONFIG_TEMPLATE = Ic2AdvancedSolarAddonMainConfig()
 
 object Ic2AdvancedSolarAddonConfig {
     private val logger = LoggerFactory.getLogger("${IC2AdvancedSolarAddon.MOD_ID}/config")
-    private val json = Json {
-        prettyPrint = true
-        encodeDefaults = true
-        ignoreUnknownKeys = true
-    }
+    private val mapper: ObjectMapper = jacksonObjectMapper()
+        .configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false)
+        .enable(SerializationFeature.INDENT_OUTPUT)
     private val configPath: Path by lazy {
         FabricLoader.getInstance().configDir.resolve("${IC2AdvancedSolarAddon.MOD_ID}.json")
     }
@@ -90,7 +82,7 @@ object Ic2AdvancedSolarAddonConfig {
     }
 
     fun prettyCurrentConfig(): String {
-        return json.encodeToString(current)
+        return mapper.writeValueAsString(current)
     }
 
     fun getMolecularTransformerRecipes(): List<MolecularTransformerRecipeConfig> {
@@ -164,8 +156,8 @@ object Ic2AdvancedSolarAddonConfig {
 
         return try {
             val raw = Files.readString(configPath, StandardCharsets.UTF_8)
-            val config = json.decodeFromString<Ic2AdvancedSolarAddonMainConfig>(raw)
-            val parsedRoot = json.parseToJsonElement(raw).jsonObject
+            val config = mapper.readValue<Ic2AdvancedSolarAddonMainConfig>(raw)
+            val parsedRoot = mapper.readTree(raw)
             if (shouldRewriteConfig(parsedRoot, config)) {
                 Files.writeString(configPath, encodeConfigWithComments(config), StandardCharsets.UTF_8)
             }
@@ -184,56 +176,61 @@ object Ic2AdvancedSolarAddonConfig {
         return encodeConfigWithComments(DEFAULT_CONFIG_TEMPLATE)
     }
 
-    private fun shouldRewriteConfig(root: JsonObject, config: Ic2AdvancedSolarAddonMainConfig): Boolean {
+    private fun shouldRewriteConfig(root: JsonNode, config: Ic2AdvancedSolarAddonMainConfig): Boolean {
         return !containsAllExpectedKeys(root, buildCommentedConfigJson(config))
     }
 
     private fun encodeConfigWithComments(config: Ic2AdvancedSolarAddonMainConfig): String =
-        json.encodeToString(JsonObject.serializer(), buildCommentedConfigJson(config))
+        mapper.writerWithDefaultPrettyPrinter().writeValueAsString(buildCommentedConfigJson(config))
 
-    private fun buildCommentedConfigJson(config: Ic2AdvancedSolarAddonMainConfig): JsonObject =
+    private fun buildCommentedConfigJson(config: Ic2AdvancedSolarAddonMainConfig): ObjectNode =
         buildCommentedObject(
             instance = config,
-            jsonObject = json.encodeToJsonElement(Ic2AdvancedSolarAddonMainConfig.serializer(), config).jsonObject,
+            jsonNode = mapper.valueToTree(config) as ObjectNode,
             rootComment = "配置文件允许保留这些 _comment_* 说明字段；程序读取时会自动忽略它们。"
         )
 
     private fun buildCommentedObject(
         instance: Any,
-        jsonObject: JsonObject,
+        jsonNode: ObjectNode,
         rootComment: String? = null
-    ): JsonObject = buildJsonObject {
+    ): ObjectNode {
+        val result = mapper.createObjectNode()
+
         if (rootComment != null) {
-            put("_comment", JsonPrimitive(rootComment))
+            result.put("_comment", rootComment)
         }
 
         declaredConfigFields(instance.javaClass).forEach { field ->
             field.isAccessible = true
             val fieldName = field.name
-            val valueElement = jsonObject[fieldName] ?: return@forEach
+            val valueElement = jsonNode.get(fieldName) ?: return@forEach
             field.getAnnotation(ConfigComment::class.java)?.let { annotation ->
-                put("_comment_$fieldName", JsonPrimitive(formatComment(annotation)))
+                result.put("_comment_$fieldName", formatComment(annotation))
             }
 
             val fieldValue = field.get(instance)
             val isNestedConfigObject =
                 fieldValue != null &&
-                    valueElement is JsonObject &&
+                    valueElement.isObject &&
                     !Map::class.java.isAssignableFrom(field.type)
 
             if (isNestedConfigObject) {
-                put(fieldName, buildCommentedObject(fieldValue!!, valueElement.jsonObject))
+                result.set<JsonNode>(fieldName, buildCommentedObject(fieldValue!!, valueElement as ObjectNode))
             } else {
-                put(fieldName, valueElement)
+                result.set<JsonNode>(fieldName, valueElement)
             }
         }
+
+        return result
     }
 
-    private fun containsAllExpectedKeys(actual: JsonObject, expected: JsonObject): Boolean =
-        expected.all { (key, expectedValue) ->
-            val actualValue = actual[key] ?: return@all false
-            if (expectedValue is JsonObject && actualValue is JsonObject) {
-                containsAllExpectedKeys(actualValue, expectedValue)
+    private fun containsAllExpectedKeys(actual: JsonNode, expected: ObjectNode): Boolean =
+        expected.fieldNames().asSequence().all { key ->
+            val actualValue = actual.get(key) ?: return@all false
+            val expectedValue = expected.get(key)
+            if (expectedValue != null && expectedValue.isObject && actualValue.isObject) {
+                containsAllExpectedKeys(actualValue, expectedValue as ObjectNode)
             } else {
                 true
             }
